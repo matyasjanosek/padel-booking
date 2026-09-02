@@ -1,0 +1,192 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+enum Role {
+  member
+  admin
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  cancelled
+  expired
+}
+
+enum DiscountType {
+  percentage
+  fixed
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+}
+
+enum TournamentFormat {
+  americano
+  mexicano
+  round_robin
+}
+
+enum TournamentStatus {
+  draft
+  active
+  finished
+}
+
+enum MatchStatus {
+  pending
+  playing
+  finished
+}
+
+enum Team {
+  a
+  b
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  googleId     String?  @unique @map("google_id")
+  name         String
+  role         Role     @default(member)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  bookings          Booking[]
+  tournamentPlayers TournamentPlayer[]
+
+  @@map("users")
+}
+
+model Court {
+  id       Int     @id @default(autoincrement())
+  name     String
+  isActive Boolean @default(true) @map("is_active")
+
+  bookings Booking[]
+  matches  TournamentMatch[]
+
+  @@map("courts")
+}
+
+model Booking {
+  id            Int           @id @default(autoincrement())
+  userId        Int           @map("user_id")
+  courtId       Int           @map("court_id")
+  couponId      Int?          @map("coupon_id")
+  startTime     DateTime      @map("start_time")
+  endTime       DateTime      @map("end_time")
+  status        BookingStatus @default(pending)
+  price         Decimal       @db.Decimal(10, 2)
+  gateCode      String?       @map("gate_code")
+  holdExpiresAt DateTime?     @map("hold_expires_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  court   Court   @relation(fields: [courtId], references: [id])
+  coupon  Coupon? @relation(fields: [couponId], references: [id])
+  payment Payment?
+
+  @@unique([courtId, startTime])
+  @@map("bookings")
+}
+
+model Coupon {
+  id            Int          @id @default(autoincrement())
+  code          String       @unique
+  discountType  DiscountType @map("discount_type")
+  discountValue Decimal      @map("discount_value") @db.Decimal(10, 2)
+  validFrom     DateTime     @map("valid_from")
+  validUntil    DateTime     @map("valid_until")
+  maxUses       Int          @map("max_uses")
+  timesUsed     Int          @default(0) @map("times_used")
+  isActive      Boolean      @default(true) @map("is_active")
+
+  bookings Booking[]
+
+  @@map("coupons")
+}
+
+model Payment {
+  id                    Int           @id @default(autoincrement())
+  bookingId             Int           @unique @map("booking_id")
+  stripePaymentIntentId String        @map("stripe_payment_intent_id")
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String
+  status                PaymentStatus @default(pending)
+  createdAt             DateTime      @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+model Tournament {
+  id             Int              @id @default(autoincrement())
+  name           String
+  format         TournamentFormat
+  status         TournamentStatus @default(draft)
+  pointsPerMatch Int              @map("points_per_match")
+  courtCount     Int              @map("court_count")
+  createdAt      DateTime         @default(now()) @map("created_at")
+
+  players TournamentPlayer[]
+  matches TournamentMatch[]
+
+  @@map("tournaments")
+}
+
+model TournamentPlayer {
+  id            Int    @id @default(autoincrement())
+  tournamentId  Int    @map("tournament_id")
+  userId        Int?   @map("user_id")
+  displayName   String @map("display_name")
+  points        Int    @default(0)
+  matchesPlayed Int    @default(0) @map("matches_played")
+
+  tournament   Tournament              @relation(fields: [tournamentId], references: [id])
+  user         User?                   @relation(fields: [userId], references: [id])
+  matchPlayers TournamentMatchPlayer[]
+
+  @@map("tournament_players")
+}
+
+model TournamentMatch {
+  id           Int         @id @default(autoincrement())
+  tournamentId Int         @map("tournament_id")
+  round        Int
+  courtId      Int         @map("court_id")
+  scoreA       Int?        @map("score_a")
+  scoreB       Int?        @map("score_b")
+  status       MatchStatus @default(pending)
+
+  tournament Tournament              @relation(fields: [tournamentId], references: [id])
+  court      Court                   @relation(fields: [courtId], references: [id])
+  players    TournamentMatchPlayer[]
+
+  @@map("tournament_matches")
+}
+
+model TournamentMatchPlayer {
+  id                 Int  @id @default(autoincrement())
+  matchId            Int  @map("match_id")
+  tournamentPlayerId Int  @map("tournament_player_id")
+  team               Team
+
+  match  TournamentMatch  @relation(fields: [matchId], references: [id])
+  player TournamentPlayer @relation(fields: [tournamentPlayerId], references: [id])
+
+  @@unique([matchId, tournamentPlayerId])
+  @@map("tournament_match_players")
+}

@@ -10,4 +10,6 @@ coverage/
 
 # local working notes
 CLAUDE.md
-docs/
+docs/plan.md
+docs/setup.md
+docs/decisions.md
