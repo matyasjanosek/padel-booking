@@ -11,6 +11,7 @@
     "dev": "concurrently -n server,client -c green,cyan \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "node --watch --env-file=.env server/src/index.js",
     "dev:client": "npm run dev --workspace client",
+    "seed": "node --env-file=.env prisma/seed.js",
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write ."
