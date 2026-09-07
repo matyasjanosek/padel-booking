@@ -17,7 +17,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["server/**/*.js", "*.config.js", "eslint.config.js"],
+    files: ["server/**/*.js", "prisma/*.js", "*.config.js", "eslint.config.js"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",
