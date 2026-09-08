@@ -12,7 +12,7 @@ export default function App() {
   }, []);
 
   return (
-    <main>
+    <>
       <h1>Padel Centre</h1>
       <h2>Our courts</h2>
       {error ? (
@@ -24,6 +24,6 @@ export default function App() {
           ))}
         </ul>
       )}
-    </main>
+    </>
   );
 }
