@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/* Design tokens. Defined once here, used through Tailwind utilities everywhere.
+   Values come from docs/plan.md. Clearing a namespace with `initial` drops
+   Tailwind's defaults so only these tokens are available. */
+@theme {
+  --color-*: initial;
+  --color-bg: #0a0a0a;
+  --color-surface: #141414;
+  --color-text: #e8ece4;
+  --color-text-muted: #7a8578;
+  --color-accent: #a6e22e;
+  --color-accent-dim: #2a3d14;
+  --color-border: #242424;
+
+  --font-*: initial;
+  --font-heading: "Unbounded", sans-serif;
+  --font-body: "Poppins", sans-serif;
+
+  --breakpoint-*: initial;
+  --breakpoint-sm: 700px;
+  --breakpoint-md: 900px;
+
+  --container-page: 1600px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    line-height: 1.6;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.1;
+  }
+}
+
+/* Motion stays slow and subtle, and is removed when the visitor asks for that. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hero entrance: each direct child of .hero-enter fades up in turn. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-enter > * {
+    opacity: 0;
+    animation: hero-rise 0.7s ease forwards;
+  }
+  .hero-enter > *:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+  .hero-enter > *:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .hero-enter > *:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+  .hero-enter > *:nth-child(4) {
+    animation-delay: 0.42s;
+  }
+}
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
