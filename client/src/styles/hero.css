@@ -1,0 +1,110 @@
+.hero {
+  display: grid;
+  gap: 2rem;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.hero-eyebrow {
+  margin: 0;
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero-title {
+  display: flex;
+  flex-direction: column;
+  margin: 1.25rem 0 1.5rem;
+  font-weight: 700;
+  font-size: clamp(2.5rem, 12vw, 6.5rem);
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+}
+
+.hero-title-accent {
+  color: var(--accent);
+}
+
+.hero-lead {
+  max-width: 46ch;
+  margin: 0 0 2rem;
+  font-size: 1.05rem;
+  color: var(--text-muted);
+}
+
+.hero-cta {
+  display: inline-block;
+  padding: 0.75rem 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-weight: 500;
+  transition:
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.hero-cta:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.hero-visual {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 3rem;
+    min-height: 70vh;
+    max-width: var(--page-max);
+    padding: 4rem 2.5rem 5rem;
+  }
+
+  /* Right column stays empty. The 3D ball is added here in the next step. */
+  .hero-visual {
+    display: block;
+    align-self: stretch;
+    min-height: 360px;
+  }
+}
+
+/* Entrance only, and only when the visitor has not asked for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-content > * {
+    opacity: 0;
+    animation: hero-rise 0.7s ease forwards;
+  }
+
+  .hero-eyebrow {
+    animation-delay: 0.05s;
+  }
+
+  .hero-title {
+    animation-delay: 0.15s;
+  }
+
+  .hero-lead {
+    animation-delay: 0.3s;
+  }
+
+  .hero-cta {
+    animation-delay: 0.42s;
+  }
+
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

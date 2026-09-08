@@ -1,8 +1,8 @@
 export default function Footer() {
   return (
     <footer className="footer">
-      <p>Padel Centre — two outdoor courts</p>
-      <p>&copy; {new Date().getFullYear()} Padel Centre</p>
+      <p>GEN PADEL Rožnov. Two outdoor courts in Rožnov pod Radhoštěm.</p>
+      <p>&copy; {new Date().getFullYear()} GEN PADEL Rožnov</p>
     </footer>
   );
 }

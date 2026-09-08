@@ -1,0 +1,39 @@
+.courts {
+  padding: 3rem 1.25rem 4rem;
+  border-top: 1px solid var(--border);
+}
+
+.courts-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+}
+
+.courts-note {
+  max-width: 46ch;
+  margin: 0 0 1.5rem;
+  color: var(--text-muted);
+}
+
+.courts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.courts-list li {
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .courts {
+    max-width: var(--page-max);
+    padding: 3rem 2.5rem 4rem;
+  }
+}
