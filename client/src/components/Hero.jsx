@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import HeroBall from "./HeroBall.jsx";
 
 export default function Hero() {
   return (
@@ -22,8 +23,7 @@ export default function Hero() {
           Book a court
         </Link>
       </div>
-      {/* Right column stays empty. The 3D ball is added here in the next step. */}
-      <div className="hidden md:block md:min-h-[360px] md:self-stretch" aria-hidden="true" />
+      <HeroBall />
     </section>
   );
 }
