@@ -11,7 +11,7 @@ export default function Nav() {
   return (
     <header className="nav">
       <NavLink to="/" className="nav-logo">
-        Padel Centre
+        GEN PADEL
       </NavLink>
       <nav className="nav-links">
         {links.map((link) => (
