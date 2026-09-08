@@ -1,0 +1,15 @@
+/* Design tokens. Defined once, used everywhere. Values come from docs/plan.md. */
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --text: #e8ece4;
+  --text-muted: #7a8578;
+  --accent: #a6e22e;
+  --accent-dim: #2a3d14;
+  --border: #242424;
+
+  --font-heading: "Unbounded", sans-serif;
+  --font-body: "Poppins", sans-serif;
+
+  --content-width: 1100px;
+}
