@@ -2,5 +2,6 @@ node_modules
 dist
 build
 coverage
-client/src/*.glb
+client/src/assets/*.glb
+client/public/draco
 prisma/migrations
