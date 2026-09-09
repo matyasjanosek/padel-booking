@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import App from "./App.jsx";
 
 beforeEach(() => {
@@ -14,14 +15,22 @@ beforeEach(() => {
   );
 });
 
+function renderApp() {
+  render(
+    <MemoryRouter>
+      <App />
+    </MemoryRouter>,
+  );
+}
+
 describe("App", () => {
-  it("renders the centre name", () => {
-    render(<App />);
-    expect(screen.getByRole("heading", { name: "Padel Centre" })).toBeInTheDocument();
+  it("renders the hero heading", () => {
+    renderApp();
+    expect(screen.getByRole("heading", { level: 1, name: "GEN PADEL ROZNOV" })).toBeInTheDocument();
   });
 
   it("shows the courts from the server", async () => {
-    render(<App />);
+    renderApp();
     expect(await screen.findByText("Court 1")).toBeInTheDocument();
   });
 });
