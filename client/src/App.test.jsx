@@ -24,9 +24,12 @@ function renderApp() {
 }
 
 describe("App", () => {
-  it("renders the hero heading", () => {
+  it("renders the hero heading", async () => {
     renderApp();
     expect(screen.getByRole("heading", { level: 1, name: "GEN PADEL ROZNOV" })).toBeInTheDocument();
+    // App also fetches the courts on mount. Wait for that to settle so the
+    // state update does not land after this test has already finished.
+    await screen.findByText("Court 1");
   });
 
   it("shows the courts from the server", async () => {
