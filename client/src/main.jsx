@@ -7,6 +7,7 @@ import App from "./App.jsx";
 import Info from "./pages/Info.jsx";
 import Contact from "./pages/Contact.jsx";
 import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
 import "./styles/main.css";
 
 createRoot(document.getElementById("root")).render(
@@ -19,6 +20,7 @@ createRoot(document.getElementById("root")).render(
             <Route path="/info" element={<Info />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
           </Route>
         </Routes>
       </AuthProvider>
