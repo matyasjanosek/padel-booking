@@ -54,9 +54,12 @@ export function clearSessionCookie(res) {
   res.clearCookie(COOKIE_NAME);
 }
 
+export function readCookie(req, name) {
+  return parseCookies(req.headers.cookie)[name] || null;
+}
+
 export function readSessionUserId(req) {
-  const cookies = parseCookies(req.headers.cookie);
-  const signedValue = cookies[COOKIE_NAME];
+  const signedValue = readCookie(req, COOKIE_NAME);
   if (!signedValue) {
     return null;
   }
