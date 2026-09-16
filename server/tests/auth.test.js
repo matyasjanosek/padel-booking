@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 
 process.env.SESSION_SECRET = "test-secret";
+process.env.CLIENT_URL = "http://localhost:5173";
 
 vi.mock("../src/services/auth.js", () => ({
   registerUser: vi.fn(),
@@ -12,8 +13,23 @@ vi.mock("../src/services/auth.js", () => ({
   },
 }));
 
+vi.mock("../src/services/googleAuth.js", () => ({
+  buildGoogleAuthUrl: vi.fn(
+    (state) => `https://accounts.google.com/o/oauth2/v2/auth?state=${state}`,
+  ),
+  exchangeCodeForToken: vi.fn(),
+  fetchGoogleUserInfo: vi.fn(),
+  findOrCreateGoogleUser: vi.fn(),
+}));
+
 import { createApp } from "../src/app.js";
 import { registerUser, authenticateUser, getUserById } from "../src/services/auth.js";
+import {
+  buildGoogleAuthUrl,
+  exchangeCodeForToken,
+  fetchGoogleUserInfo,
+  findOrCreateGoogleUser,
+} from "../src/services/googleAuth.js";
 
 let server;
 let baseUrl;
@@ -181,5 +197,109 @@ describe("GET /api/auth/me", () => {
     const body = await meRes.json();
     expect(body.email).toBe(fakeUser.email);
     expect(body.passwordHash).toBeUndefined();
+  });
+});
+
+describe("GET /api/auth/google", () => {
+  it("redirects to Google and sets a state cookie", async () => {
+    const res = await fetch(`${baseUrl}/api/auth/google`, { redirect: "manual" });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toMatch(/^https:\/\/accounts\.google\.com/);
+    expect(res.headers.get("set-cookie")).toMatch(/^google_oauth_state=.*HttpOnly/i);
+    expect(buildGoogleAuthUrl).toHaveBeenCalledWith(expect.any(String));
+  });
+});
+
+describe("GET /api/auth/google/callback", () => {
+  async function startGoogleLogin() {
+    const startRes = await fetch(`${baseUrl}/api/auth/google`, { redirect: "manual" });
+    const stateCookie = startRes.headers.get("set-cookie").split(";")[0];
+    const state = stateCookie.split("=")[1];
+    return { state, stateCookie };
+  }
+
+  it("logs the user in and redirects to the client on success", async () => {
+    const { state, stateCookie } = await startGoogleLogin();
+    exchangeCodeForToken.mockResolvedValue({ access_token: "token-123" });
+    fetchGoogleUserInfo.mockResolvedValue({
+      sub: "google-1",
+      email: "player@example.com",
+      email_verified: true,
+      name: "Alex",
+    });
+    findOrCreateGoogleUser.mockResolvedValue(fakeUser);
+
+    const res = await fetch(`${baseUrl}/api/auth/google/callback?code=abc&state=${state}`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("http://localhost:5173/account");
+    // The response also clears the state cookie, so there are two Set-Cookie
+    // headers; getSetCookie keeps them separate instead of joining them.
+    expect(res.headers.getSetCookie().some((cookie) => cookie.startsWith("session="))).toBe(true);
+    expect(findOrCreateGoogleUser).toHaveBeenCalledWith({
+      googleId: "google-1",
+      email: "player@example.com",
+      name: "Alex",
+    });
+  });
+
+  it("redirects to login with an error when the state does not match", async () => {
+    const { stateCookie } = await startGoogleLogin();
+
+    const res = await fetch(`${baseUrl}/api/auth/google/callback?code=abc&state=wrong-state`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("http://localhost:5173/login?error=google");
+    expect(exchangeCodeForToken).not.toHaveBeenCalled();
+  });
+
+  it("redirects to login with an error when there is no code", async () => {
+    const { state, stateCookie } = await startGoogleLogin();
+
+    const res = await fetch(`${baseUrl}/api/auth/google/callback?state=${state}`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.headers.get("location")).toBe("http://localhost:5173/login?error=google");
+    expect(exchangeCodeForToken).not.toHaveBeenCalled();
+  });
+
+  it("redirects to login with an error when Google's email is not verified", async () => {
+    const { state, stateCookie } = await startGoogleLogin();
+    exchangeCodeForToken.mockResolvedValue({ access_token: "token-123" });
+    fetchGoogleUserInfo.mockResolvedValue({
+      sub: "google-2",
+      email: "unverified@example.com",
+      email_verified: false,
+      name: "Nobody",
+    });
+
+    const res = await fetch(`${baseUrl}/api/auth/google/callback?code=abc&state=${state}`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.headers.get("location")).toBe("http://localhost:5173/login?error=google");
+    expect(findOrCreateGoogleUser).not.toHaveBeenCalled();
+  });
+
+  it("redirects to login with an error when the token exchange fails", async () => {
+    const { state, stateCookie } = await startGoogleLogin();
+    exchangeCodeForToken.mockRejectedValue(new Error("Google said no"));
+
+    const res = await fetch(`${baseUrl}/api/auth/google/callback?code=abc&state=${state}`, {
+      headers: { Cookie: stateCookie },
+      redirect: "manual",
+    });
+
+    expect(res.headers.get("location")).toBe("http://localhost:5173/login?error=google");
   });
 });
