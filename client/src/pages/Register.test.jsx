@@ -68,4 +68,13 @@ describe("Register", () => {
     expect(await screen.findByText("Email is already registered")).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
   });
+
+  it("links to Google sign in", () => {
+    useAuth.mockReturnValue({ register: vi.fn() });
+    renderRegister();
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      "/api/auth/google",
+    );
+  });
 });
