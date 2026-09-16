@@ -3,6 +3,7 @@ import {
   setSessionCookie,
   clearSessionCookie,
   readSessionUserId,
+  readCookie,
 } from "../src/services/session.js";
 
 beforeAll(() => {
@@ -62,5 +63,16 @@ describe("clearSessionCookie", () => {
     const res = fakeResponse();
     clearSessionCookie(res);
     expect(res.clearCalls).toEqual(["session"]);
+  });
+});
+
+describe("readCookie", () => {
+  it("reads a named cookie other than the session cookie", () => {
+    const req = { headers: { cookie: "session=abc; google_oauth_state=xyz" } };
+    expect(readCookie(req, "google_oauth_state")).toBe("xyz");
+  });
+
+  it("returns null when the named cookie is missing", () => {
+    expect(readCookie({ headers: {} }, "google_oauth_state")).toBeNull();
   });
 });
