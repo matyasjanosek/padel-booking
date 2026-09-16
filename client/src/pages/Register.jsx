@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import ContinueWithGoogle from "../components/ContinueWithGoogle.jsx";
 
 export default function Register() {
   const { register } = useAuth();
@@ -84,6 +85,8 @@ export default function Register() {
           {submitting ? "Creating account..." : "Create account"}
         </button>
       </form>
+
+      <ContinueWithGoogle />
 
       <p className="mt-6 text-text-muted">
         Already have an account?{" "}

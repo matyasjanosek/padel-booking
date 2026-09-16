@@ -1,11 +1,17 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import ContinueWithGoogle from "../components/ContinueWithGoogle.jsx";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [error, setError] = useState("");
+  const [searchParams] = useSearchParams();
+  const [error, setError] = useState(
+    searchParams.get("error") === "google"
+      ? "Something went wrong signing in with Google. Please try again."
+      : "",
+  );
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event) {
@@ -66,6 +72,8 @@ export default function Login() {
           {submitting ? "Logging in..." : "Log in"}
         </button>
       </form>
+
+      <ContinueWithGoogle />
 
       <p className="mt-6 text-text-muted">
         New here?{" "}

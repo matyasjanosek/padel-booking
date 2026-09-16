@@ -15,9 +15,9 @@ vi.mock("../context/AuthContext.jsx", () => ({
 
 import { useAuth } from "../context/AuthContext.jsx";
 
-function renderLogin() {
+function renderLogin(initialEntries = ["/login"]) {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <Login />
     </MemoryRouter>,
   );
@@ -60,5 +60,20 @@ describe("Login", () => {
 
     expect(await screen.findByText("Invalid email or password")).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("links to Google sign in", () => {
+    useAuth.mockReturnValue({ login: vi.fn() });
+    renderLogin();
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
+      "href",
+      "/api/auth/google",
+    );
+  });
+
+  it("shows an error when redirected back from a failed Google sign in", () => {
+    useAuth.mockReturnValue({ login: vi.fn() });
+    renderLogin(["/login?error=google"]);
+    expect(screen.getByText(/something went wrong signing in with google/i)).toBeInTheDocument();
   });
 });
