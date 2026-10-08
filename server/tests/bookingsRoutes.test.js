@@ -7,6 +7,10 @@ vi.mock("../src/services/bookings.js", () => ({
   toPublicBooking: (booking) => ({ id: booking.id, status: booking.status ?? "pending" }),
 }));
 
+vi.mock("../src/services/payments.js", () => ({
+  createPaymentIntentForBooking: vi.fn(),
+}));
+
 // requireAuth is real middleware; these are the two services it calls, so a
 // logged in user can be simulated without real session cookies.
 vi.mock("../src/services/session.js", () => ({
@@ -18,6 +22,7 @@ vi.mock("../src/services/auth.js", () => ({
 
 import { createApp } from "../src/app.js";
 import { createBooking, listBookingsForUser, cancelBooking } from "../src/services/bookings.js";
+import { createPaymentIntentForBooking } from "../src/services/payments.js";
 import { readSessionUserId } from "../src/services/session.js";
 import { getUserById } from "../src/services/auth.js";
 
@@ -192,5 +197,75 @@ describe("POST /api/bookings/:id/cancel", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ id: 1, status: "cancelled" });
     expect(cancelBooking).toHaveBeenCalledWith(1, 1);
+  });
+});
+
+describe("POST /api/bookings/:id/pay", () => {
+  function postPay(id, cookie = "session=whatever") {
+    return fetch(`${baseUrl}/api/bookings/${id}/pay`, {
+      method: "POST",
+      headers: { Cookie: cookie },
+    });
+  }
+
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await postPay(1, "");
+
+    expect(res.status).toBe(401);
+    expect(createPaymentIntentForBooking).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-numeric id without calling the service", async () => {
+    const res = await postPay("not-a-number");
+
+    expect(res.status).toBe(400);
+    expect(createPaymentIntentForBooking).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the booking does not exist", async () => {
+    createPaymentIntentForBooking.mockResolvedValue({ outcome: "not_found" });
+
+    const res = await postPay(999);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 when the booking belongs to someone else", async () => {
+    createPaymentIntentForBooking.mockResolvedValue({ outcome: "forbidden" });
+
+    const res = await postPay(1);
+
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 409 when the booking cannot be paid for", async () => {
+    createPaymentIntentForBooking.mockResolvedValue({ outcome: "not_payable" });
+
+    const res = await postPay(1);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("returns the client secret, the amount, the currency and the publishable key", async () => {
+    process.env.STRIPE_PUBLISHABLE_KEY = "pk_test_example";
+    createPaymentIntentForBooking.mockResolvedValue({
+      outcome: "created",
+      clientSecret: "pi_1_secret",
+      amount: 400,
+      currency: "czk",
+    });
+
+    const res = await postPay(1);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      clientSecret: "pi_1_secret",
+      amount: 400,
+      currency: "czk",
+      publishableKey: "pk_test_example",
+    });
+    expect(createPaymentIntentForBooking).toHaveBeenCalledWith(1, 1);
   });
 });
