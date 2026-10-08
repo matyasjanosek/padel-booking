@@ -8,9 +8,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: padel_booking
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     env:
-      DATABASE_URL: "mysql://user:pass@localhost:3306/padel_booking"
-      SHADOW_DATABASE_URL: "mysql://user:pass@localhost:3306/padel_booking_shadow"
+      DATABASE_URL: "mysql://root:root@localhost:3306/padel_booking"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,5 +31,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
+      # The booking concurrency test needs a real database and a seeded
+      # court, not only the mocked unit tests.
+      - run: npx prisma migrate deploy
+      - run: node prisma/seed.js
       - run: npm run lint
       - run: npm test
