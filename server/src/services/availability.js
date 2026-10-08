@@ -1,6 +1,7 @@
 import { prisma } from "../db/client.js";
 import { SLOT_LENGTH_MINUTES, OPENING_HOUR, CLOSING_HOUR } from "../config.js";
 import { pragueTimeToUtc, formatPragueIso } from "../timezone.js";
+import { expireStaleHolds } from "./holdExpiry.js";
 
 const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 
@@ -28,6 +29,12 @@ export async function getAvailability(courtId, date) {
   if (!court) {
     return null;
   }
+
+  // The query below already treats a pending booking with a past
+  // holdExpiresAt as free, with or without this. Sweeping here keeps the
+  // stored status accurate for whoever reads this booking next, without
+  // waiting for the scheduled job's next run.
+  await expireStaleHolds();
 
   const slotStarts = slotStartsForDay(date);
   const dayStart = new Date(slotStarts[0]);

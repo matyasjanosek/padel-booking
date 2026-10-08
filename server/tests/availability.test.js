@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../src/db/client.js", () => ({
   prisma: {
     court: { findUnique: vi.fn() },
-    booking: { findMany: vi.fn() },
+    booking: { findMany: vi.fn(), updateMany: vi.fn() },
   },
 }));
 
@@ -14,6 +14,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   prisma.court.findUnique.mockResolvedValue({ id: 1, name: "Court 1" });
   prisma.booking.findMany.mockResolvedValue([]);
+  prisma.booking.updateMany.mockResolvedValue({ count: 0 });
 });
 
 describe("getAvailability", () => {
@@ -82,5 +83,14 @@ describe("getAvailability", () => {
     // 07:00 and 22:00 Prague summer time.
     expect(where.startTime.gte.toISOString()).toBe("2026-09-20T05:00:00.000Z");
     expect(where.startTime.lt.toISOString()).toBe("2026-09-20T20:00:00.000Z");
+  });
+
+  it("sweeps stale holds before reading bookings, so a hold that just expired is not read back as taken", async () => {
+    await getAvailability(1, "2026-09-20");
+
+    expect(prisma.booking.updateMany).toHaveBeenCalledWith({
+      where: { status: "pending", holdExpiresAt: { lt: expect.any(Date) } },
+      data: { status: "expired" },
+    });
   });
 });

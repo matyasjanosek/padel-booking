@@ -8,3 +8,7 @@ export const CLOSING_HOUR = 22;
 // price for one slot. One price for every slot for now, no coupons yet.
 export const HOLD_MINUTES = 10;
 export const PRICE_PER_SLOT_CZK = 400;
+
+// How often the background job sweeps for pending bookings whose hold has
+// passed and marks them expired.
+export const HOLD_EXPIRY_INTERVAL_SECONDS = 60;
