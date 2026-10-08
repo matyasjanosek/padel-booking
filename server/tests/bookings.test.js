@@ -4,8 +4,11 @@ vi.mock("../src/db/client.js", () => ({
   prisma: {
     booking: {
       create: vi.fn(),
+      update: vi.fn(),
       updateMany: vi.fn(),
+      findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -15,7 +18,12 @@ function p2002() {
 }
 
 import { prisma } from "../src/db/client.js";
-import { createBooking, toPublicBooking } from "../src/services/bookings.js";
+import {
+  createBooking,
+  listBookingsForUser,
+  cancelBooking,
+  toPublicBooking,
+} from "../src/services/bookings.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -106,6 +114,67 @@ describe("createBooking", () => {
     ).rejects.toBe(foreignKeyError);
 
     expect(prisma.booking.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("listBookingsForUser", () => {
+  it("asks for only this user's bookings, newest start time first", async () => {
+    prisma.booking.findMany.mockResolvedValue([]);
+
+    await listBookingsForUser(5);
+
+    expect(prisma.booking.findMany).toHaveBeenCalledWith({
+      where: { userId: 5 },
+      orderBy: { startTime: "desc" },
+    });
+  });
+});
+
+describe("cancelBooking", () => {
+  const booking = { id: 1, userId: 5, status: "pending" };
+
+  it("returns not_found for a booking that does not exist", async () => {
+    prisma.booking.findUnique.mockResolvedValue(null);
+
+    const result = await cancelBooking(1, 5);
+
+    expect(result).toEqual({ outcome: "not_found" });
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+
+  it("returns forbidden when the booking belongs to someone else", async () => {
+    prisma.booking.findUnique.mockResolvedValue({ ...booking, userId: 99 });
+
+    const result = await cancelBooking(1, 5);
+
+    expect(result).toEqual({ outcome: "forbidden" });
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+
+  it.each(["expired", "cancelled"])(
+    "returns not_cancellable for a booking that is already %s",
+    async (status) => {
+      prisma.booking.findUnique.mockResolvedValue({ ...booking, status });
+
+      const result = await cancelBooking(1, 5);
+
+      expect(result).toEqual({ outcome: "not_cancellable" });
+      expect(prisma.booking.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["pending", "confirmed"])("cancels the owner's own %s booking", async (status) => {
+    prisma.booking.findUnique.mockResolvedValue({ ...booking, status });
+    const cancelled = { ...booking, status: "cancelled" };
+    prisma.booking.update.mockResolvedValue(cancelled);
+
+    const result = await cancelBooking(1, 5);
+
+    expect(result).toEqual({ outcome: "cancelled", booking: cancelled });
+    expect(prisma.booking.update).toHaveBeenCalledWith({
+      where: { id: 1 },
+      data: { status: "cancelled" },
+    });
   });
 });
 

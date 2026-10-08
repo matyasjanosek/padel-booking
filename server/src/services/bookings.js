@@ -66,6 +66,42 @@ export async function createBooking({ userId, courtId, startTime }) {
   }
 }
 
+export function listBookingsForUser(userId) {
+  return prisma.booking.findMany({
+    where: { userId },
+    orderBy: { startTime: "desc" },
+  });
+}
+
+// Only the booking's own owner can cancel it, and only while it is still
+// pending or confirmed, a booking that already expired or was cancelled
+// cannot be cancelled again. Returns which of those applied, so the route
+// can turn it into the right status code, there is no single good sentinel
+// value to tell apart "not found", "not yours" and "already settled".
+//
+// A cancelled booking is one of the conditions createBooking's reclaim
+// logic already treats as stale, so the slot becomes bookable again as soon
+// as this runs, no extra wiring needed.
+export async function cancelBooking(bookingId, userId) {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+
+  if (!booking) {
+    return { outcome: "not_found" };
+  }
+  if (booking.userId !== userId) {
+    return { outcome: "forbidden" };
+  }
+  if (booking.status !== "pending" && booking.status !== "confirmed") {
+    return { outcome: "not_cancellable" };
+  }
+
+  const cancelled = await prisma.booking.update({
+    where: { id: bookingId },
+    data: { status: "cancelled" },
+  });
+  return { outcome: "cancelled", booking: cancelled };
+}
+
 export function toPublicBooking(booking) {
   return {
     id: booking.id,
