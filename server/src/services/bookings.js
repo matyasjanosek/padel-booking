@@ -5,25 +5,65 @@ import { formatPragueIso } from "../timezone.js";
 const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 const HOLD_MS = HOLD_MINUTES * 60 * 1000;
 
-// Creates a pending booking with a hold a few minutes ahead. Relies on the
-// (court_id, start_time) unique constraint for the double booking guarantee
-// and the court_id foreign key for a court that does not exist; the caller
-// is expected to let a P2002 or P2003 error from this propagate.
-export function createBooking({ userId, courtId, startTime }) {
-  const endTime = new Date(startTime.getTime() + SLOT_LENGTH_MS);
-  const holdExpiresAt = new Date(Date.now() + HOLD_MS);
+// A slot that was booked before and is now stale, its hold expired or it
+// was cancelled, still has a row at that (court_id, start_time). MySQL's
+// unique index does not care about status, so inserting there always
+// raises P2002 even though the slot is free again. This is the condition
+// under which an existing row may be taken over instead of left blocking
+// the slot forever. A function, not a constant, so "now" is read fresh on
+// every call rather than once when the module loads.
+function reclaimableConditions() {
+  return [
+    { status: "cancelled" },
+    { status: "expired" },
+    { status: "pending", holdExpiresAt: { lt: new Date() } },
+  ];
+}
 
-  return prisma.booking.create({
-    data: {
-      userId,
-      courtId,
-      startTime,
-      endTime,
-      status: "pending",
-      price: PRICE_PER_SLOT_CZK,
-      holdExpiresAt,
-    },
-  });
+// Creates a pending booking with a hold a few minutes ahead. For a slot
+// nobody has booked before, the (court_id, start_time) unique constraint is
+// the guarantee against double booking, as the plan intends: this just
+// inserts and lets a P2002 from a genuine race propagate, the route turns
+// it into a 409.
+//
+// For a slot that already has a stale row, the insert's P2002 is instead
+// handled here: the existing row is reclaimed in place with an update
+// guarded by RECLAIMABLE, so it only matches if the row is still actually
+// stale at the moment the update runs. Its affected row count is the race
+// guarantee for this path, the same role the unique constraint plays for a
+// brand new slot. If it affects no rows, the slot is genuinely taken, or
+// someone else's request reclaimed it a moment earlier, and the original
+// P2002 propagates instead.
+export async function createBooking({ userId, courtId, startTime }) {
+  const endTime = new Date(startTime.getTime() + SLOT_LENGTH_MS);
+  const data = {
+    userId,
+    courtId,
+    startTime,
+    endTime,
+    status: "pending",
+    price: PRICE_PER_SLOT_CZK,
+    holdExpiresAt: new Date(Date.now() + HOLD_MS),
+  };
+
+  try {
+    return await prisma.booking.create({ data });
+  } catch (error) {
+    if (error.code !== "P2002") {
+      throw error;
+    }
+
+    const reclaimed = await prisma.booking.updateMany({
+      where: { courtId, startTime, OR: reclaimableConditions() },
+      data,
+    });
+    if (reclaimed.count === 0) {
+      throw error;
+    }
+    return prisma.booking.findUniqueOrThrow({
+      where: { courtId_startTime: { courtId, startTime } },
+    });
+  }
 }
 
 export function toPublicBooking(booking) {
