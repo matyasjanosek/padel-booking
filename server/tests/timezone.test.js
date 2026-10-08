@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pragueTimeToUtc, formatPragueIso } from "../src/timezone.js";
+import { pragueTimeToUtc, formatPragueIso, pragueDateString } from "../src/timezone.js";
 
 describe("pragueTimeToUtc", () => {
   it("uses CET, UTC+1, in winter", () => {
@@ -39,5 +39,28 @@ describe("formatPragueIso", () => {
   it("round trips back to the same instant", () => {
     const instant = new Date("2026-10-25T21:00:00.000Z");
     expect(new Date(formatPragueIso(instant)).getTime()).toBe(instant.getTime());
+  });
+
+  // A hold expiry is "now plus ten minutes", so unlike a slot boundary it
+  // almost never lands on a whole second.
+  it("keeps the milliseconds and a whole-minute offset for an instant mid-second", () => {
+    const instant = new Date("2026-07-15T05:00:18.473Z");
+    expect(formatPragueIso(instant)).toBe("2026-07-15T07:00:18.473+02:00");
+  });
+
+  it("round trips an instant mid-second", () => {
+    const instant = new Date("2026-01-15T06:30:07.009Z");
+    expect(new Date(formatPragueIso(instant)).getTime()).toBe(instant.getTime());
+  });
+});
+
+describe("pragueDateString", () => {
+  it("matches the UTC date when they agree", () => {
+    expect(pragueDateString(new Date("2026-07-15T12:00:00.000Z"))).toBe("2026-07-15");
+  });
+
+  it("is a day ahead of UTC late at night", () => {
+    // 23:30 UTC on Jan 15 is 00:30 on Jan 16 in Prague (CET, UTC+1).
+    expect(pragueDateString(new Date("2026-01-15T23:30:00.000Z"))).toBe("2026-01-16");
   });
 });
