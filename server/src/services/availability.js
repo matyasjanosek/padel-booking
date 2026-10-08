@@ -7,7 +7,8 @@ const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 // The start time of every slot in the bookable window for one day, as UTC
 // timestamps. date is "YYYY-MM-DD"; the opening and closing hour are
 // Europe/Prague wall clock time, so this shifts with the summer time change.
-function slotStartsForDay(date) {
+// Exported so booking creation can check a requested time is a real slot.
+export function slotStartsForDay(date) {
   const [year, month, day] = date.split("-").map(Number);
   const dayStart = pragueTimeToUtc(year, month, day, OPENING_HOUR, 0).getTime();
   const dayEnd = pragueTimeToUtc(year, month, day, CLOSING_HOUR, 0).getTime();
