@@ -10,6 +10,7 @@ import Contact from "./pages/Contact.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Account from "./pages/Account.jsx";
+import Checkout from "./pages/Checkout.jsx";
 import "./styles/main.css";
 
 createRoot(document.getElementById("root")).render(
@@ -25,6 +26,7 @@ createRoot(document.getElementById("root")).render(
             <Route path="/register" element={<Register />} />
             <Route element={<RequireAuth />}>
               <Route path="/account" element={<Account />} />
+              <Route path="/booking/:id/checkout" element={<Checkout />} />
             </Route>
           </Route>
         </Routes>
