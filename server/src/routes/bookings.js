@@ -7,6 +7,7 @@ import {
   cancelBooking,
   toPublicBooking,
 } from "../services/bookings.js";
+import { createPaymentIntentForBooking } from "../services/payments.js";
 
 export const bookingsRouter = Router();
 
@@ -61,5 +62,36 @@ bookingsRouter.post("/bookings/:id/cancel", requireAuth, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Could not cancel the booking" });
+  }
+});
+
+bookingsRouter.post("/bookings/:id/pay", requireAuth, async (req, res) => {
+  const bookingId = Number(req.params.id);
+  if (!Number.isInteger(bookingId) || bookingId <= 0) {
+    return res.status(400).json({ error: "Invalid booking id" });
+  }
+
+  try {
+    const result = await createPaymentIntentForBooking(bookingId, req.user.id);
+
+    if (result.outcome === "not_found") {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+    if (result.outcome === "forbidden") {
+      return res.status(403).json({ error: "You can only pay for your own bookings" });
+    }
+    if (result.outcome === "not_payable") {
+      return res.status(409).json({ error: "This booking cannot be paid for" });
+    }
+
+    res.json({
+      clientSecret: result.clientSecret,
+      amount: result.amount,
+      currency: result.currency,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not start the payment" });
   }
 });
