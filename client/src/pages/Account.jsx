@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchMyBookings, cancelBooking } from "../api/bookings.js";
 import { fetchCourts } from "../api/courts.js";
@@ -89,35 +90,46 @@ export default function Account() {
                   {STATUS_LABELS[booking.status]}, {booking.price} CZK
                 </p>
               </div>
-              {CANCELLABLE_STATUSES.includes(booking.status) &&
-                (confirmingId === booking.id ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-text-muted">Cancel this booking?</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCancel(booking.id)}
-                      disabled={cancellingId === booking.id}
-                      className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-danger transition-colors duration-200 hover:border-danger disabled:opacity-50"
-                    >
-                      {cancellingId === booking.id ? "Cancelling..." : "Yes, cancel"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingId(null)}
-                      className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
-                    >
-                      No
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingId(booking.id)}
+
+              <div className="flex items-center gap-2">
+                {booking.status === "pending" && (
+                  <Link
+                    to={`/booking/${booking.id}/checkout`}
                     className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
                   >
-                    Cancel
-                  </button>
-                ))}
+                    Pay now
+                  </Link>
+                )}
+                {CANCELLABLE_STATUSES.includes(booking.status) &&
+                  (confirmingId === booking.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-text-muted">Cancel this booking?</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCancel(booking.id)}
+                        disabled={cancellingId === booking.id}
+                        className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-danger transition-colors duration-200 hover:border-danger disabled:opacity-50"
+                      >
+                        {cancellingId === booking.id ? "Cancelling..." : "Yes, cancel"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingId(null)}
+                        className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(booking.id)}
+                      className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+                    >
+                      Cancel
+                    </button>
+                  ))}
+              </div>
             </li>
           ))}
         </ul>

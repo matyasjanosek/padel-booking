@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import Account from "./Account.jsx";
 
 vi.mock("../context/AuthContext.jsx", () => ({
@@ -34,6 +35,14 @@ const cancelledBooking = {
   holdExpiresAt: null,
 };
 
+function renderAccount() {
+  render(
+    <MemoryRouter>
+      <Account />
+    </MemoryRouter>,
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   useAuth.mockReturnValue({ user: { name: "Alex", email: "alex@example.com" } });
@@ -43,7 +52,7 @@ beforeEach(() => {
 describe("Account", () => {
   it("shows the logged in user's name and email", async () => {
     fetchMyBookings.mockResolvedValue([]);
-    render(<Account />);
+    renderAccount();
 
     expect(screen.getByRole("heading", { level: 1, name: "Account" })).toBeInTheDocument();
     expect(screen.getByText("Alex")).toBeInTheDocument();
@@ -56,28 +65,28 @@ describe("Account", () => {
 
   it("shows a loading message while the bookings have not arrived yet", () => {
     fetchMyBookings.mockReturnValue(new Promise(() => {}));
-    render(<Account />);
+    renderAccount();
 
     expect(screen.getByText(/loading your bookings/i)).toBeInTheDocument();
   });
 
   it("shows a message when there are no bookings", async () => {
     fetchMyBookings.mockResolvedValue([]);
-    render(<Account />);
+    renderAccount();
 
     expect(await screen.findByText(/you have no bookings yet/i)).toBeInTheDocument();
   });
 
   it("shows an error when bookings could not be loaded", async () => {
     fetchMyBookings.mockRejectedValue(new Error("network down"));
-    render(<Account />);
+    renderAccount();
 
     expect(await screen.findByText(/could not be loaded/i)).toBeInTheDocument();
   });
 
   it("shows the court name, the slot and the status for each booking", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
-    render(<Account />);
+    renderAccount();
 
     expect(
       await screen.findByText(/Court 1, Mon, 10 Jun 2030, 09:00 to 10:00/),
@@ -87,16 +96,26 @@ describe("Account", () => {
 
   it("shows a Cancel button for a pending booking but not for a cancelled one", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking, cancelledBooking]);
-    render(<Account />);
+    renderAccount();
 
     const items = await screen.findAllByRole("listitem");
     expect(within(items[0]).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(within(items[1]).queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
   });
 
+  it("shows a Pay now link for a pending booking but not for a cancelled one", async () => {
+    fetchMyBookings.mockResolvedValue([pendingBooking, cancelledBooking]);
+    renderAccount();
+
+    const items = await screen.findAllByRole("listitem");
+    const payLink = within(items[0]).getByRole("link", { name: "Pay now" });
+    expect(payLink).toHaveAttribute("href", "/booking/1/checkout");
+    expect(within(items[1]).queryByRole("link", { name: "Pay now" })).not.toBeInTheDocument();
+  });
+
   it("does not cancel on the first click, it asks for confirmation first", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
-    render(<Account />);
+    renderAccount();
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
 
@@ -107,7 +126,7 @@ describe("Account", () => {
 
   it("dismisses the confirmation without cancelling when the user says no", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
-    render(<Account />);
+    renderAccount();
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
     fireEvent.click(await screen.findByRole("button", { name: "No" }));
@@ -120,7 +139,7 @@ describe("Account", () => {
   it("cancels a booking once confirmed and shows it as cancelled", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
     cancelBooking.mockResolvedValue({ ...pendingBooking, status: "cancelled" });
-    render(<Account />);
+    renderAccount();
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
     fireEvent.click(await screen.findByRole("button", { name: "Yes, cancel" }));
@@ -133,7 +152,7 @@ describe("Account", () => {
   it("shows an error when cancelling fails", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
     cancelBooking.mockRejectedValue(new Error("This booking cannot be cancelled"));
-    render(<Account />);
+    renderAccount();
 
     fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
     fireEvent.click(await screen.findByRole("button", { name: "Yes, cancel" }));
