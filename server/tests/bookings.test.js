@@ -2,9 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../src/db/client.js", () => ({
   prisma: {
-    booking: { create: vi.fn() },
+    booking: {
+      create: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+    },
   },
 }));
+
+function p2002() {
+  return Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
+}
 
 import { prisma } from "../src/db/client.js";
 import { createBooking, toPublicBooking } from "../src/services/bookings.js";
@@ -37,6 +45,67 @@ describe("createBooking", () => {
     const tenMinutes = 10 * 60 * 1000;
     expect(data.holdExpiresAt.getTime()).toBeGreaterThanOrEqual(before + tenMinutes);
     expect(data.holdExpiresAt.getTime()).toBeLessThanOrEqual(after + tenMinutes);
+  });
+
+  it("propagates a conflict with a genuinely taken slot without touching updateMany", async () => {
+    // A brand new slot where two requests raced: this call's insert loses,
+    // and the row that won is an active booking, not a stale one.
+    prisma.booking.create.mockRejectedValue(p2002());
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      createBooking({ userId: 5, courtId: 2, startTime: new Date("2030-06-10T07:00:00.000Z") }),
+    ).rejects.toMatchObject({ code: "P2002" });
+
+    expect(prisma.booking.updateMany).toHaveBeenCalled();
+  });
+
+  it("reclaims a stale row in place when the insert conflicts with it", async () => {
+    const startTime = new Date("2030-06-10T07:00:00.000Z");
+    prisma.booking.create.mockRejectedValue(p2002());
+    prisma.booking.updateMany.mockResolvedValue({ count: 1 });
+    const reclaimedRow = { id: 7, courtId: 2, startTime, status: "pending" };
+    prisma.booking.findUniqueOrThrow.mockResolvedValue(reclaimedRow);
+
+    const result = await createBooking({ userId: 5, courtId: 2, startTime });
+
+    expect(result).toBe(reclaimedRow);
+    const { where, data } = prisma.booking.updateMany.mock.calls[0][0];
+    expect(where.courtId).toBe(2);
+    expect(where.startTime).toBe(startTime);
+    expect(where.OR).toEqual([
+      { status: "cancelled" },
+      { status: "expired" },
+      { status: "pending", holdExpiresAt: { lt: expect.any(Date) } },
+    ]);
+    expect(data.userId).toBe(5);
+    expect(data.status).toBe("pending");
+  });
+
+  it("does not reclaim a row that is pending with an unexpired hold", async () => {
+    // This is what makes the update safe to race: a second request chasing
+    // the same stale row sees its own guard fail once the first has won.
+    prisma.booking.create.mockRejectedValue(p2002());
+    prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      createBooking({ userId: 5, courtId: 2, startTime: new Date("2030-06-10T07:00:00.000Z") }),
+    ).rejects.toMatchObject({ code: "P2002" });
+
+    expect(prisma.booking.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("propagates a non-conflict error, for example a court that does not exist, without reclaiming anything", async () => {
+    const foreignKeyError = Object.assign(new Error("Foreign key constraint failed"), {
+      code: "P2003",
+    });
+    prisma.booking.create.mockRejectedValue(foreignKeyError);
+
+    await expect(
+      createBooking({ userId: 5, courtId: 999, startTime: new Date("2030-06-10T07:00:00.000Z") }),
+    ).rejects.toBe(foreignKeyError);
+
+    expect(prisma.booking.updateMany).not.toHaveBeenCalled();
   });
 });
 
