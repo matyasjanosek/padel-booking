@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 
 vi.mock("../src/services/bookings.js", () => ({
   createBooking: vi.fn(),
-  toPublicBooking: (booking) => ({ id: booking.id, status: "pending" }),
+  listBookingsForUser: vi.fn(),
+  cancelBooking: vi.fn(),
+  toPublicBooking: (booking) => ({ id: booking.id, status: booking.status ?? "pending" }),
 }));
 
 // requireAuth is real middleware; these are the two services it calls, so a
@@ -15,7 +17,7 @@ vi.mock("../src/services/auth.js", () => ({
 }));
 
 import { createApp } from "../src/app.js";
-import { createBooking } from "../src/services/bookings.js";
+import { createBooking, listBookingsForUser, cancelBooking } from "../src/services/bookings.js";
 import { readSessionUserId } from "../src/services/session.js";
 import { getUserById } from "../src/services/auth.js";
 
@@ -101,5 +103,94 @@ describe("POST /api/bookings", () => {
     const res = await postBooking({ courtId: 999, startTime: VALID_START });
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/bookings", () => {
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await fetch(`${baseUrl}/api/bookings`);
+
+    expect(res.status).toBe(401);
+    expect(listBookingsForUser).not.toHaveBeenCalled();
+  });
+
+  it("returns the logged in user's own bookings", async () => {
+    listBookingsForUser.mockResolvedValue([
+      { id: 1, status: "pending" },
+      { id: 2, status: "cancelled" },
+    ]);
+
+    const res = await fetch(`${baseUrl}/api/bookings`, { headers: { Cookie: "session=whatever" } });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([
+      { id: 1, status: "pending" },
+      { id: 2, status: "cancelled" },
+    ]);
+    expect(listBookingsForUser).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("POST /api/bookings/:id/cancel", () => {
+  function postCancel(id, cookie = "session=whatever") {
+    return fetch(`${baseUrl}/api/bookings/${id}/cancel`, {
+      method: "POST",
+      headers: { Cookie: cookie },
+    });
+  }
+
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await postCancel(1, "");
+
+    expect(res.status).toBe(401);
+    expect(cancelBooking).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-numeric id without calling the service", async () => {
+    const res = await postCancel("not-a-number");
+
+    expect(res.status).toBe(400);
+    expect(cancelBooking).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the booking does not exist", async () => {
+    cancelBooking.mockResolvedValue({ outcome: "not_found" });
+
+    const res = await postCancel(999);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 403 when the booking belongs to someone else", async () => {
+    cancelBooking.mockResolvedValue({ outcome: "forbidden" });
+
+    const res = await postCancel(1);
+
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 409 when the booking can no longer be cancelled", async () => {
+    cancelBooking.mockResolvedValue({ outcome: "not_cancellable" });
+
+    const res = await postCancel(1);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("cancels the booking and passes the right id and the logged in user's id", async () => {
+    cancelBooking.mockResolvedValue({
+      outcome: "cancelled",
+      booking: { id: 1, status: "cancelled" },
+    });
+
+    const res = await postCancel(1);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: 1, status: "cancelled" });
+    expect(cancelBooking).toHaveBeenCalledWith(1, 1);
   });
 });
