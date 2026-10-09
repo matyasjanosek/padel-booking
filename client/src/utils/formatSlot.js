@@ -22,3 +22,7 @@ export function formatSlot(startTime, endTime) {
   const end = new Date(endTime);
   return `${dateFormatter.format(start)}, ${timeFormatter.format(start)} to ${timeFormatter.format(end)}`;
 }
+
+export function formatTime(time) {
+  return timeFormatter.format(new Date(time));
+}
