@@ -248,6 +248,15 @@ describe("POST /api/bookings/:id/pay", () => {
     expect(res.status).toBe(409);
   });
 
+  it("returns 409 with a clear message when a payment is already in progress", async () => {
+    createPaymentIntentForBooking.mockResolvedValue({ outcome: "in_progress" });
+
+    const res = await postPay(1);
+
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/already being processed/i);
+  });
+
   it("returns the client secret, the amount, the currency and the publishable key", async () => {
     process.env.STRIPE_PUBLISHABLE_KEY = "pk_test_example";
     createPaymentIntentForBooking.mockResolvedValue({

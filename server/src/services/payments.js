@@ -1,6 +1,23 @@
 import { prisma } from "../db/client.js";
 import { getStripe } from "../stripeClient.js";
 
+// A Payment Element can mount directly against an intent still in one of
+// these statuses, including resuming one left mid 3D Secure. Reusing its
+// client secret for any other status would hand the client a broken,
+// unmountable form.
+const PAYABLE_INTENT_STATUSES = [
+  "requires_payment_method",
+  "requires_confirmation",
+  "requires_action",
+];
+
+// succeeded or processing can still turn into a real charge on their own
+// with no further action from the customer, starting a second attempt
+// risks charging them twice. Every other non payable status (in practice,
+// canceled) is a dead end that will never confirm, so it is safe, and
+// necessary, to replace rather than block the booking from ever being paid.
+const BLOCKING_INTENT_STATUSES = ["succeeded", "processing"];
+
 // Starts paying for a pending booking. Looks up any existing payment for it
 // first, Stripe payment intents are meant to be reused across retries
 // rather than recreated, so reloading the checkout page does not create a
@@ -27,12 +44,24 @@ export async function createPaymentIntentForBooking(bookingId, userId) {
 
   if (booking.payment) {
     const intent = await stripe.paymentIntents.retrieve(booking.payment.stripePaymentIntentId);
-    return {
-      outcome: "created",
-      clientSecret: intent.client_secret,
-      amount: Number(booking.payment.amount),
-      currency: booking.payment.currency,
-    };
+
+    if (PAYABLE_INTENT_STATUSES.includes(intent.status)) {
+      return {
+        outcome: "created",
+        clientSecret: intent.client_secret,
+        amount: Number(booking.payment.amount),
+        currency: booking.payment.currency,
+      };
+    }
+    if (BLOCKING_INTENT_STATUSES.includes(intent.status)) {
+      return { outcome: "in_progress" };
+    }
+
+    // A dead intent, for example canceled. Clear it and fall through to
+    // create a fresh one below, the same booking must always be payable
+    // again rather than permanently stuck because of one abandoned attempt.
+    await stripe.paymentIntents.cancel(booking.payment.stripePaymentIntentId).catch(() => {});
+    await prisma.payment.delete({ where: { bookingId: booking.id } });
   }
 
   // Payment.amount and the API response stay in crowns, matching how
