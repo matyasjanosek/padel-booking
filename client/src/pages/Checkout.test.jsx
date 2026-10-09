@@ -125,6 +125,43 @@ describe("Checkout", () => {
     });
   });
 
+  it("calls loadStripe only once, even across separate visits to checkout", async () => {
+    // A fresh module instance so this test's call count is not polluted by
+    // the singleton other tests in this file have already populated.
+    vi.resetModules();
+    const { loadStripe: freshLoadStripe } = await import("@stripe/stripe-js");
+    const { default: FreshCheckout } = await import("./Checkout.jsx");
+
+    fetchMyBookings.mockResolvedValue([pendingBooking]);
+    createPaymentIntent.mockResolvedValue({
+      clientSecret: "pi_1_secret",
+      publishableKey: "pk_test_example",
+      amount: 400,
+      currency: "czk",
+    });
+
+    function renderFresh() {
+      return render(
+        <MemoryRouter initialEntries={["/booking/1/checkout"]}>
+          <Routes>
+            <Route path="/booking/:id/checkout" element={<FreshCheckout />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+    }
+
+    const first = renderFresh();
+    await screen.findByTestId("payment-element");
+    first.unmount();
+
+    renderFresh();
+    await screen.findByTestId("payment-element");
+
+    // Going back to checkout and arriving again used to create a second
+    // Stripe instance, which Elements then rejected as a changed stripe prop.
+    expect(freshLoadStripe).toHaveBeenCalledTimes(1);
+  });
+
   it("links back to the account page", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
     createPaymentIntent.mockReturnValue(new Promise(() => {}));
