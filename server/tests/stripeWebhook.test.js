@@ -45,6 +45,12 @@ function failedEvent(bookingId = 1, paymentIntentId = "pi_1") {
   };
 }
 
+// `stripe trigger` fixtures (and any event for a payment intent this app
+// never created) carry no metadata naming a booking at all.
+function eventWithNoBookingId(type, metadata = {}) {
+  return { type, data: { object: { id: "pi_synthetic", metadata } } };
+}
+
 function pendingBooking(overrides = {}) {
   return {
     id: 1,
@@ -97,12 +103,41 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     consoleError.mockRestore();
   });
 
-  it("does nothing when the booking no longer exists", async () => {
+  it("does nothing when the booking no longer exists, and logs it", async () => {
     prisma.booking.findUnique.mockResolvedValue(null);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     await handleStripeEvent(succeededEvent());
 
     expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it.each([{}, { bookingId: "not-a-number" }, { bookingId: "0" }])(
+    "acknowledges without throwing, and logs it, when the metadata has no usable booking id: %j",
+    async (metadata) => {
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await expect(
+        handleStripeEvent(eventWithNoBookingId("payment_intent.succeeded", metadata)),
+      ).resolves.toBeUndefined();
+
+      expect(prisma.booking.findUnique).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(consoleError).toHaveBeenCalled();
+      consoleError.mockRestore();
+    },
+  );
+
+  it("acknowledges without throwing when the event object has no metadata field at all", async () => {
+    const event = { type: "payment_intent.succeeded", data: { object: { id: "pi_synthetic" } } };
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(handleStripeEvent(event)).resolves.toBeUndefined();
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("does nothing when the booking was already confirmed, a duplicate delivery of the same event", async () => {
@@ -167,6 +202,18 @@ describe("handleStripeEvent, payment_intent.payment_failed", () => {
     await handleStripeEvent(failedEvent(1, "pi_old"));
 
     expect(prisma.payment.update).not.toHaveBeenCalled();
+  });
+
+  it("acknowledges without throwing when the metadata has no usable booking id", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      handleStripeEvent(eventWithNoBookingId("payment_intent.payment_failed")),
+    ).resolves.toBeUndefined();
+
+    expect(prisma.booking.findUnique).not.toHaveBeenCalled();
+    expect(prisma.payment.update).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });
 
