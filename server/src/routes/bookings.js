@@ -83,6 +83,12 @@ bookingsRouter.post("/bookings/:id/pay", requireAuth, async (req, res) => {
     if (result.outcome === "not_payable") {
       return res.status(409).json({ error: "This booking cannot be paid for" });
     }
+    if (result.outcome === "in_progress") {
+      return res.status(409).json({
+        error:
+          "A payment for this booking is already being processed. Check your account in a moment.",
+      });
+    }
 
     res.json({
       clientSecret: result.clientSecret,
