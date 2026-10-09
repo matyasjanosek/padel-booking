@@ -1,5 +1,6 @@
 import { prisma } from "../db/client.js";
 import { generateGateCode } from "./gateCode.js";
+import { sendBookingConfirmationEmail } from "./bookingConfirmationEmail.js";
 
 // Stripe can redeliver the same event more than once, and a booking's
 // payment can be released out from under it if its hold expired or it was
@@ -23,16 +24,26 @@ async function handlePaymentSucceeded(paymentIntent) {
     return;
   }
 
-  await prisma.$transaction([
+  const [confirmedBooking] = await prisma.$transaction([
     prisma.booking.update({
       where: { id: booking.id },
       data: { status: "confirmed", gateCode: generateGateCode() },
+      include: { user: true, court: true },
     }),
     prisma.payment.update({
       where: { bookingId: booking.id },
       data: { status: "succeeded" },
     }),
   ]);
+
+  // The booking is already paid and confirmed at this point. A failed email
+  // must not undo that or fail the webhook, Stripe would just retry an
+  // event that already succeeded, so only the send itself is best effort.
+  try {
+    await sendBookingConfirmationEmail(confirmedBooking);
+  } catch (error) {
+    console.error("Booking confirmation email failed:", error.message);
+  }
 }
 
 async function handlePaymentFailed(paymentIntent) {

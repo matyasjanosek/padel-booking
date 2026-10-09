@@ -12,9 +12,24 @@ vi.mock("../src/services/gateCode.js", () => ({
   generateGateCode: vi.fn(() => "123456"),
 }));
 
+vi.mock("../src/services/bookingConfirmationEmail.js", () => ({
+  sendBookingConfirmationEmail: vi.fn(),
+}));
+
 import { prisma } from "../src/db/client.js";
 import { generateGateCode } from "../src/services/gateCode.js";
+import { sendBookingConfirmationEmail } from "../src/services/bookingConfirmationEmail.js";
 import { handleStripeEvent } from "../src/services/stripeWebhook.js";
+
+// What the transaction's booking.update resolves to, with its included
+// user and court, the shape handlePaymentSucceeded hands to the email.
+const confirmedBooking = {
+  id: 1,
+  status: "confirmed",
+  gateCode: "123456",
+  user: { name: "Alex", email: "alex@example.com" },
+  court: { name: "Court 1" },
+};
 
 function succeededEvent(bookingId = 1, paymentIntentId = "pi_1") {
   return {
@@ -41,7 +56,7 @@ function pendingBooking(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  prisma.$transaction.mockResolvedValue([]);
+  prisma.$transaction.mockResolvedValue([confirmedBooking, {}]);
 });
 
 describe("handleStripeEvent, payment_intent.succeeded", () => {
@@ -53,12 +68,33 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     expect(prisma.booking.update).toHaveBeenCalledWith({
       where: { id: 1 },
       data: { status: "confirmed", gateCode: "123456" },
+      include: { user: true, court: true },
     });
     expect(prisma.payment.update).toHaveBeenCalledWith({
       where: { bookingId: 1 },
       data: { status: "succeeded" },
     });
     expect(generateGateCode).toHaveBeenCalled();
+  });
+
+  it("sends the booking confirmation email with the confirmed booking", async () => {
+    prisma.booking.findUnique.mockResolvedValue(pendingBooking());
+
+    await handleStripeEvent(succeededEvent());
+
+    expect(sendBookingConfirmationEmail).toHaveBeenCalledWith(confirmedBooking);
+  });
+
+  it("still confirms the booking when the confirmation email fails to send", async () => {
+    prisma.booking.findUnique.mockResolvedValue(pendingBooking());
+    sendBookingConfirmationEmail.mockRejectedValue(new Error("Resend is down"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(handleStripeEvent(succeededEvent())).resolves.toBeUndefined();
+
+    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it("does nothing when the booking no longer exists", async () => {
@@ -112,6 +148,7 @@ describe("handleStripeEvent, payment_intent.payment_failed", () => {
       data: { status: "failed" },
     });
     expect(prisma.booking.update).not.toHaveBeenCalled();
+    expect(sendBookingConfirmationEmail).not.toHaveBeenCalled();
   });
 
   it("does nothing when the booking is no longer pending, for example it was cancelled first", async () => {
