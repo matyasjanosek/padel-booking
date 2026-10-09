@@ -6,6 +6,7 @@ import Layout from "./components/Layout.jsx";
 import RequireAuth from "./components/RequireAuth.jsx";
 import App from "./App.jsx";
 import Info from "./pages/Info.jsx";
+import Booking from "./pages/Booking.jsx";
 import Contact from "./pages/Contact.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
@@ -21,6 +22,7 @@ createRoot(document.getElementById("root")).render(
           <Route element={<Layout />}>
             <Route path="/" element={<App />} />
             <Route path="/info" element={<Info />} />
+            <Route path="/booking" element={<Booking />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
