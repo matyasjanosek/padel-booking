@@ -58,12 +58,28 @@ async function handlePaymentFailed(paymentIntent) {
   });
 }
 
-function findBookingForIntent(paymentIntent) {
-  const bookingId = Number(paymentIntent.metadata.bookingId);
-  return prisma.booking.findUnique({
+// Null means there is nothing this event can do, either its metadata never
+// named a real booking (for example a synthetic `stripe trigger` event, which
+// carries no metadata at all) or that booking no longer exists. Both are
+// logged and treated as "acknowledge and do nothing", not a processing
+// failure, so Stripe is not left retrying an event that can never succeed.
+async function findBookingForIntent(paymentIntent) {
+  const bookingId = Number(paymentIntent.metadata?.bookingId);
+  if (!Number.isInteger(bookingId) || bookingId <= 0) {
+    console.error(
+      `Stripe webhook: payment intent ${paymentIntent.id} has no usable booking id in its metadata`,
+    );
+    return null;
+  }
+
+  const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: { payment: true },
   });
+  if (!booking) {
+    console.error(`Stripe webhook: booking ${bookingId} does not exist`);
+  }
+  return booking;
 }
 
 // True only while this event's payment intent is still the one actually
