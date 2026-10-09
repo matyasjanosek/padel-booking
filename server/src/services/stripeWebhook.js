@@ -1,6 +1,7 @@
 import { prisma } from "../db/client.js";
 import { generateGateCode } from "./gateCode.js";
 import { sendBookingConfirmationEmail } from "./bookingConfirmationEmail.js";
+import { scheduleLighting } from "../hardware/index.js";
 
 // Stripe can redeliver the same event more than once, and a booking's
 // payment can be released out from under it if its hold expired or it was
@@ -35,6 +36,16 @@ async function handlePaymentSucceeded(paymentIntent) {
       data: { status: "succeeded" },
     }),
   ]);
+
+  // The simulation is synchronous and in memory, it cannot fail the way a
+  // real network call to Resend below can, so there is nothing to guard
+  // against yet. A real hardware implementation that can fail would be the
+  // point to revisit this.
+  scheduleLighting({
+    courtId: confirmedBooking.courtId,
+    startTime: confirmedBooking.startTime,
+    endTime: confirmedBooking.endTime,
+  });
 
   // The booking is already paid and confirmed at this point. A failed email
   // must not undo that or fail the webhook, Stripe would just retry an

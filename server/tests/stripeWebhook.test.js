@@ -16,17 +16,26 @@ vi.mock("../src/services/bookingConfirmationEmail.js", () => ({
   sendBookingConfirmationEmail: vi.fn(),
 }));
 
+vi.mock("../src/hardware/index.js", () => ({
+  scheduleLighting: vi.fn(),
+}));
+
 import { prisma } from "../src/db/client.js";
 import { generateGateCode } from "../src/services/gateCode.js";
 import { sendBookingConfirmationEmail } from "../src/services/bookingConfirmationEmail.js";
+import { scheduleLighting } from "../src/hardware/index.js";
 import { handleStripeEvent } from "../src/services/stripeWebhook.js";
 
 // What the transaction's booking.update resolves to, with its included
-// user and court, the shape handlePaymentSucceeded hands to the email.
+// user and court, the shape handlePaymentSucceeded hands to the email and
+// the court and times it hands to the lighting schedule.
 const confirmedBooking = {
   id: 1,
+  courtId: 2,
   status: "confirmed",
   gateCode: "123456",
+  startTime: new Date("2030-06-10T07:00:00.000Z"),
+  endTime: new Date("2030-06-10T08:00:00.000Z"),
   user: { name: "Alex", email: "alex@example.com" },
   court: { name: "Court 1" },
 };
@@ -81,6 +90,18 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
       data: { status: "succeeded" },
     });
     expect(generateGateCode).toHaveBeenCalled();
+  });
+
+  it("schedules lighting for the confirmed booking's court and times", async () => {
+    prisma.booking.findUnique.mockResolvedValue(pendingBooking());
+
+    await handleStripeEvent(succeededEvent());
+
+    expect(scheduleLighting).toHaveBeenCalledWith({
+      courtId: 2,
+      startTime: confirmedBooking.startTime,
+      endTime: confirmedBooking.endTime,
+    });
   });
 
   it("sends the booking confirmation email with the confirmed booking", async () => {
@@ -184,6 +205,7 @@ describe("handleStripeEvent, payment_intent.payment_failed", () => {
     });
     expect(prisma.booking.update).not.toHaveBeenCalled();
     expect(sendBookingConfirmationEmail).not.toHaveBeenCalled();
+    expect(scheduleLighting).not.toHaveBeenCalled();
   });
 
   it("does nothing when the booking is no longer pending, for example it was cancelled first", async () => {

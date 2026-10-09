@@ -27,3 +27,13 @@ export const GATE_CODE_VALID_AFTER_MINUTES = 45;
 // Resend's own sandbox sender, used in development until a real domain is
 // verified with Resend.
 export const EMAIL_FROM_ADDRESS = "onboarding@resend.dev";
+
+// Rate limiting for the public gate code validation endpoint, see
+// middleware/rateLimitGate.js. The gate keypad is one physical device, so
+// every real visitor shares its IP address, only failed attempts count
+// against this, never a correct code. Strict enough that brute forcing a 6
+// digit code within its whole 65 minute validity window (the two margins
+// above) is not practical: a few dozen guesses at most against a million
+// possible codes.
+export const GATE_RATE_LIMIT_MAX_FAILURES = 5;
+export const GATE_RATE_LIMIT_WINDOW_MINUTES = 15;
