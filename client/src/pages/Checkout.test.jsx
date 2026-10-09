@@ -102,6 +102,20 @@ describe("Checkout", () => {
     expect(screen.getByRole("button", { name: "Pay now" })).toBeInTheDocument();
   });
 
+  it("shows a clear message instead of a broken payment form when a payment is already in progress", async () => {
+    fetchMyBookings.mockResolvedValue([pendingBooking]);
+    createPaymentIntent.mockRejectedValue(
+      new Error(
+        "A payment for this booking is already being processed. Check your account in a moment.",
+      ),
+    );
+    renderCheckout();
+
+    expect(await screen.findByText(/already being processed/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("payment-element")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pay now" })).not.toBeInTheDocument();
+  });
+
   it("shows the error from a declined card without redirecting", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
     createPaymentIntent.mockResolvedValue({
