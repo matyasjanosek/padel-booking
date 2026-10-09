@@ -45,6 +45,7 @@ describe("GET /api/availability", () => {
       date: "2026-09-20",
       courtId: 1,
       slotMinutes: 60,
+      price: 400,
       slots: fakeSlots,
     });
     expect(getAvailability).toHaveBeenCalledWith(1, "2026-09-20");
