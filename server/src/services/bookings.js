@@ -1,6 +1,7 @@
 import { prisma } from "../db/client.js";
 import { SLOT_LENGTH_MINUTES, HOLD_MINUTES, PRICE_PER_SLOT_CZK } from "../config.js";
 import { formatPragueIso } from "../timezone.js";
+import { releasePaymentIfPending } from "./payments.js";
 
 const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 const HOLD_MS = HOLD_MINUTES * 60 * 1000;
@@ -81,7 +82,10 @@ export function listBookingsForUser(userId) {
 //
 // A cancelled booking is one of the conditions createBooking's reclaim
 // logic already treats as stale, so the slot becomes bookable again as soon
-// as this runs, no extra wiring needed.
+// as this runs. If a payment for it is still pending, nobody completed or
+// failed the checkout before cancelling, that payment is released too, see
+// releasePaymentIfPending. Cancelling an already paid booking does not
+// touch its payment, undoing that needs an actual refund, out of scope here.
 export async function cancelBooking(bookingId, userId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
 
@@ -99,6 +103,7 @@ export async function cancelBooking(bookingId, userId) {
     where: { id: bookingId },
     data: { status: "cancelled" },
   });
+  await releasePaymentIfPending(bookingId);
   return { outcome: "cancelled", booking: cancelled };
 }
 
