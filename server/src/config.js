@@ -12,3 +12,6 @@ export const PRICE_PER_SLOT_CZK = 400;
 // How often the background job sweeps for pending bookings whose hold has
 // passed and marks them expired.
 export const HOLD_EXPIRY_INTERVAL_SECONDS = 60;
+
+// How many digits in a gate code, generated when a booking is confirmed.
+export const GATE_CODE_DIGITS = 6;

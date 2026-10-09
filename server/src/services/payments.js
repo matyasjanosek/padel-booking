@@ -84,3 +84,23 @@ export async function createPaymentIntentForBooking(bookingId, userId) {
     currency: payment.currency,
   };
 }
+
+// Called whenever a booking's hold expires or the booking is cancelled
+// while its payment is still pending, nobody ever completed or failed the
+// checkout. If the slot is later reclaimed by a different booking attempt,
+// createPaymentIntentForBooking's "reuse an existing payment" lookup would
+// otherwise hand the new occupant a payment intent that belongs to the
+// previous, abandoned attempt; if that old intent is somehow still paid
+// later, the webhook would confirm whichever booking currently occupies
+// the row, not necessarily the person who paid. Cancelling the intent at
+// Stripe and clearing the local payment row makes the slot start
+// financially clean for whoever books it next.
+export async function releasePaymentIfPending(bookingId) {
+  const payment = await prisma.payment.findUnique({ where: { bookingId } });
+  if (!payment || payment.status !== "pending") {
+    return;
+  }
+  const stripe = getStripe();
+  await stripe.paymentIntents.cancel(payment.stripePaymentIntentId).catch(() => {});
+  await prisma.payment.delete({ where: { bookingId } });
+}
