@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import ContinueWithGoogle from "../components/ContinueWithGoogle.jsx";
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState(
     searchParams.get("error") === "google"
@@ -21,7 +22,10 @@ export default function Login() {
     const form = new FormData(event.target);
     try {
       await login({ email: form.get("email"), password: form.get("password") });
-      navigate("/account");
+      // Pages that send a logged out user here first, for example the
+      // booking page, save where they were in location.state.from, so
+      // logging in returns there instead of always going to the account page.
+      navigate(location.state?.from ?? "/account");
     } catch (err) {
       setError(err.message);
     } finally {

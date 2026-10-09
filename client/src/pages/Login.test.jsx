@@ -62,6 +62,18 @@ describe("Login", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it("returns to the saved location after login when sent here from another page first", async () => {
+    const login = vi.fn().mockResolvedValue({ id: 1 });
+    useAuth.mockReturnValue({ login });
+    renderLogin([{ pathname: "/login", state: { from: "/booking?date=2030-06-10" } }]);
+
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Log in" }));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/booking?date=2030-06-10"));
+  });
+
   it("links to Google sign in", () => {
     useAuth.mockReturnValue({ login: vi.fn() });
     renderLogin();
