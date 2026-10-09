@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -6,6 +6,19 @@ import { fetchMyBookings } from "../api/bookings.js";
 import { fetchCourts } from "../api/courts.js";
 import { createPaymentIntent } from "../api/payments.js";
 import { formatSlot } from "../utils/formatSlot.js";
+
+// loadStripe injects Stripe's own script tag and must only run once per
+// page load, not once per render. A useMemo keyed on the checkout object
+// was not enough: that object gets a new identity every time the payment
+// intent is fetched (for example going back to checkout and arriving
+// again), which called loadStripe a second time and changed the stripe
+// prop Elements was already given, which Stripe.js does not allow. A
+// module scope singleton means this really only runs once.
+let stripePromise;
+function getStripePromise(publishableKey) {
+  stripePromise ??= loadStripe(publishableKey);
+  return stripePromise;
+}
 
 // Card details are entered straight into Stripe's own Payment Element and
 // never pass through this app; confirming just hands the elements instance
@@ -81,13 +94,7 @@ export default function Checkout() {
       .catch((err) => setError(err.message));
   }, [booking, bookingId]);
 
-  // loadStripe injects Stripe's own script tag; calling it again on every
-  // render would do that repeatedly, so it only runs again if the key it
-  // was given actually changes.
-  const stripePromise = useMemo(
-    () => (checkout ? loadStripe(checkout.publishableKey) : null),
-    [checkout],
-  );
+  const stripePromise = checkout ? getStripePromise(checkout.publishableKey) : null;
 
   function courtName(courtId) {
     return courts.find((court) => court.id === courtId)?.name ?? `Court ${courtId}`;
