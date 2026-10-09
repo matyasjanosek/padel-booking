@@ -10,7 +10,12 @@ vi.mock("../src/db/client.js", () => ({
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
     },
+    payment: { findUnique: vi.fn(), delete: vi.fn() },
   },
+}));
+
+vi.mock("../src/stripeClient.js", () => ({
+  getStripe: vi.fn(() => ({ paymentIntents: { cancel: vi.fn().mockResolvedValue({}) } })),
 }));
 
 function p2002() {
@@ -27,6 +32,10 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // No payment attached by default, releasePaymentIfPending's own cases are
+  // covered in payments.test.js, cancelBooking's tests just need it to not
+  // throw when it runs as part of cancelling.
+  prisma.payment.findUnique.mockResolvedValue(null);
 });
 
 describe("createBooking", () => {
@@ -175,6 +184,20 @@ describe("cancelBooking", () => {
       where: { id: 1 },
       data: { status: "cancelled" },
     });
+  });
+
+  it("releases a still pending payment when cancelling", async () => {
+    prisma.booking.findUnique.mockResolvedValue(booking);
+    prisma.booking.update.mockResolvedValue({ ...booking, status: "cancelled" });
+    prisma.payment.findUnique.mockResolvedValue({
+      bookingId: 1,
+      stripePaymentIntentId: "pi_1",
+      status: "pending",
+    });
+
+    await cancelBooking(1, 5);
+
+    expect(prisma.payment.delete).toHaveBeenCalledWith({ where: { bookingId: 1 } });
   });
 });
 
