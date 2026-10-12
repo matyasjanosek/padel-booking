@@ -6,6 +6,7 @@ import { availabilityRouter } from "./routes/availability.js";
 import { bookingsRouter } from "./routes/bookings.js";
 import { stripeWebhookRouter } from "./routes/stripeWebhook.js";
 import { gateRouter } from "./routes/gate.js";
+import { tournamentsRouter } from "./routes/tournaments.js";
 
 export function createApp() {
   const app = express();
@@ -19,5 +20,6 @@ export function createApp() {
   app.use("/api", availabilityRouter);
   app.use("/api", bookingsRouter);
   app.use("/api", gateRouter);
+  app.use("/api", tournamentsRouter);
   return app;
 }

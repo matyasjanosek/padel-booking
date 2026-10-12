@@ -139,6 +139,7 @@ model Tournament {
   status         TournamentStatus @default(draft)
   pointsPerMatch Int              @map("points_per_match")
   courtCount     Int              @map("court_count")
+  roundCount     Int              @map("round_count")
   createdAt      DateTime         @default(now()) @map("created_at")
 
   players TournamentPlayer[]
