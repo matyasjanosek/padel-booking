@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { validateCreateBooking } from "../src/middleware/validateBooking.js";
+import {
+  validateCreateBooking,
+  validateRescheduleBooking,
+} from "../src/middleware/validateBooking.js";
 
 function fakeResponse() {
   return {
@@ -71,6 +74,42 @@ describe("validateCreateBooking", () => {
     const req = { body: { courtId: "1", startTime: "2030-06-10T23:00:00.000+02:00" } };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe("validateRescheduleBooking", () => {
+  it("normalises courtId and startTime and calls next for a valid request", () => {
+    const req = { body: { courtId: "1", startTime: VALID_START } };
+    const next = vi.fn();
+
+    validateRescheduleBooking(req, fakeResponse(), next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.body.courtId).toBe(1);
+    expect(req.body.startTime).toBeInstanceOf(Date);
+  });
+
+  it("accepts a start time in the past, unlike a new booking", () => {
+    const req = { body: { courtId: "1", startTime: "2020-01-01T09:00:00.000+01:00" } };
+    const next = vi.fn();
+
+    validateRescheduleBooking(req, fakeResponse(), next);
+
+    expect(next).toHaveBeenCalled();
+  });
+
+  it("rejects a court id that is not a positive integer", () => {
+    const req = { body: { courtId: "0", startTime: VALID_START } };
+    const res = fakeResponse();
+    validateRescheduleBooking(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects a start time that does not fall on a slot boundary", () => {
+    const req = { body: { courtId: "1", startTime: "2030-06-10T09:15:00.000+02:00" } };
+    const res = fakeResponse();
+    validateRescheduleBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 });
