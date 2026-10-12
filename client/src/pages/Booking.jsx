@@ -24,6 +24,7 @@ export default function Booking() {
   const [loadError, setLoadError] = useState("");
 
   const [selectedSlot, setSelectedSlot] = useState(null); // { courtId, startTime, endTime }
+  const [couponCode, setCouponCode] = useState("");
   const [booking, setBooking] = useState(false);
   const [bookingError, setBookingError] = useState("");
 
@@ -60,6 +61,7 @@ export default function Booking() {
 
   function changeDate(newDate) {
     setSelectedSlot(null);
+    setCouponCode("");
     setBookingError("");
     setSearchParams({ date: newDate });
   }
@@ -84,6 +86,7 @@ export default function Booking() {
       const created = await createBooking({
         courtId: selectedSlot.courtId,
         startTime: selectedSlot.startTime,
+        couponCode: couponCode.trim() || undefined,
       });
       navigate(`/booking/${created.id}/checkout`);
     } catch (err) {
@@ -158,6 +161,19 @@ export default function Booking() {
             {formatSlot(selectedSlot.startTime, selectedSlot.endTime)}
           </p>
           <p className="mt-1 text-text-muted">{price} CZK</p>
+          <div className="mt-3 flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="coupon-code">
+              Coupon code (optional)
+            </label>
+            <input
+              id="coupon-code"
+              type="text"
+              value={couponCode}
+              onChange={(event) => setCouponCode(event.target.value)}
+              disabled={booking}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-text disabled:opacity-50"
+            />
+          </div>
           <div className="mt-4 flex gap-3">
             <button
               type="button"
@@ -169,7 +185,10 @@ export default function Booking() {
             </button>
             <button
               type="button"
-              onClick={() => setSelectedSlot(null)}
+              onClick={() => {
+                setSelectedSlot(null);
+                setCouponCode("");
+              }}
               disabled={booking}
               className="rounded-full border border-border px-6 py-2.5 font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
             >

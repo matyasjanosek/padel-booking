@@ -118,6 +118,9 @@ export default function Checkout() {
             {courtName(booking.courtId)}, {formatSlot(booking.startTime, booking.endTime)}
           </p>
           <p className="mt-1 font-medium text-text">{booking.price} CZK</p>
+          {booking.couponCode && (
+            <p className="mt-1 text-sm text-accent">Coupon {booking.couponCode} applied</p>
+          )}
 
           {checkout && stripePromise && (
             <Elements stripe={stripePromise} options={{ clientSecret: checkout.clientSecret }}>

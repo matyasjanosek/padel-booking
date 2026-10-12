@@ -4,6 +4,7 @@ vi.mock("../src/db/client.js", () => ({
   prisma: {
     booking: { findUnique: vi.fn(), update: vi.fn() },
     payment: { update: vi.fn() },
+    coupon: { update: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -190,6 +191,25 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     await handleStripeEvent(succeededEvent());
 
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("counts a coupon use once the booking it was applied to is confirmed", async () => {
+    prisma.booking.findUnique.mockResolvedValue(pendingBooking({ couponId: 9 }));
+
+    await handleStripeEvent(succeededEvent());
+
+    expect(prisma.coupon.update).toHaveBeenCalledWith({
+      where: { id: 9 },
+      data: { timesUsed: { increment: 1 } },
+    });
+  });
+
+  it("does not touch any coupon when the booking has none applied", async () => {
+    prisma.booking.findUnique.mockResolvedValue(pendingBooking({ couponId: null }));
+
+    await handleStripeEvent(succeededEvent());
+
+    expect(prisma.coupon.update).not.toHaveBeenCalled();
   });
 });
 
