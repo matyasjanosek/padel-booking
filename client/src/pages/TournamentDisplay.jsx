@@ -67,10 +67,10 @@ export default function TournamentDisplay() {
               Sitting out: {sitOutPlayers.map((player) => player.displayName).join(", ")}
             </p>
           )}
-          {isCurrentRoundComplete && currentRound < tournament.roundCount && (
+          {isCurrentRoundComplete && tournament.status !== "finished" && (
             <p className="mt-6 text-2xl text-text-muted">Round {currentRound + 1} is next.</p>
           )}
-          {isCurrentRoundComplete && currentRound >= tournament.roundCount && (
+          {tournament.status === "finished" && (
             <p className="mt-6 text-3xl font-medium text-accent">Tournament finished.</p>
           )}
         </div>

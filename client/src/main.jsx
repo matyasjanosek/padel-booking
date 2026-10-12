@@ -20,6 +20,8 @@ import AdminBookings from "./pages/AdminBookings.jsx";
 import AdminCourts from "./pages/AdminCourts.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
 import AdminCoupons from "./pages/AdminCoupons.jsx";
+import AdminTournaments from "./pages/AdminTournaments.jsx";
+import AdminTournamentDetail from "./pages/AdminTournamentDetail.jsx";
 import "./styles/main.css";
 
 createRoot(document.getElementById("root")).render(
@@ -49,6 +51,8 @@ createRoot(document.getElementById("root")).render(
               <Route path="courts" element={<AdminCourts />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="coupons" element={<AdminCoupons />} />
+              <Route path="tournaments" element={<AdminTournaments />} />
+              <Route path="tournaments/:id" element={<AdminTournamentDetail />} />
             </Route>
           </Route>
         </Routes>

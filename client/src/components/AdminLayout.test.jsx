@@ -28,6 +28,7 @@ describe("AdminLayout", () => {
     expect(screen.getByRole("link", { name: "Courts" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Users" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Coupons" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tournaments" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to site" })).toHaveAttribute("href", "/");
     expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
     expect(screen.getByText("Bookings content")).toBeInTheDocument();
