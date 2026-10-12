@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 
 vi.mock("../src/services/courts.js", () => ({
-  listCourts: vi.fn(() =>
+  listActiveCourts: vi.fn(() =>
     Promise.resolve([
       { id: 1, name: "Court 1", isActive: true },
       { id: 2, name: "Court 2", isActive: true },

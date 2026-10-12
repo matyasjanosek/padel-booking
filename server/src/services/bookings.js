@@ -36,6 +36,16 @@ function reclaimableConditions() {
 // someone else's request reclaimed it a moment earlier, and the original
 // P2002 propagates instead.
 export async function createBooking({ userId, courtId, startTime }) {
+  // An inactive court is not bookable, the same as if it did not exist.
+  // There is no foreign key for "and the court must be active", so this
+  // needs its own check; thrown with a P2003 code so the existing "court
+  // not found" handling in the route already covers it, nothing else about
+  // that response needs to say whether the court is missing or just closed.
+  const court = await prisma.court.findUnique({ where: { id: courtId } });
+  if (!court || !court.isActive) {
+    throw Object.assign(new Error("Court not found"), { code: "P2003" });
+  }
+
   const endTime = new Date(startTime.getTime() + SLOT_LENGTH_MS);
   const data = {
     userId,

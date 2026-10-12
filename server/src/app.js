@@ -8,6 +8,8 @@ import { stripeWebhookRouter } from "./routes/stripeWebhook.js";
 import { gateRouter } from "./routes/gate.js";
 import { tournamentsRouter } from "./routes/tournaments.js";
 import { adminBookingsRouter } from "./routes/adminBookings.js";
+import { adminCourtsRouter } from "./routes/adminCourts.js";
+import { adminUsersRouter } from "./routes/adminUsers.js";
 
 export function createApp() {
   const app = express();
@@ -23,5 +25,7 @@ export function createApp() {
   app.use("/api", gateRouter);
   app.use("/api", tournamentsRouter);
   app.use("/api", adminBookingsRouter);
+  app.use("/api", adminCourtsRouter);
+  app.use("/api", adminUsersRouter);
   return app;
 }
