@@ -10,6 +10,7 @@ import { tournamentsRouter } from "./routes/tournaments.js";
 import { adminBookingsRouter } from "./routes/adminBookings.js";
 import { adminCourtsRouter } from "./routes/adminCourts.js";
 import { adminUsersRouter } from "./routes/adminUsers.js";
+import { adminCouponsRouter } from "./routes/adminCoupons.js";
 
 export function createApp() {
   const app = express();
@@ -27,5 +28,6 @@ export function createApp() {
   app.use("/api", adminBookingsRouter);
   app.use("/api", adminCourtsRouter);
   app.use("/api", adminUsersRouter);
+  app.use("/api", adminCouponsRouter);
   return app;
 }
