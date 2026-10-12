@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   validateCreateTournament,
   validateRegisterPlayer,
+  validateScore,
 } from "../src/middleware/validateTournament.js";
 
 function fakeResponse() {
@@ -123,6 +124,49 @@ describe("validateRegisterPlayer", () => {
     const req = { body: { displayName: "   " } };
     const res = fakeResponse();
     validateRegisterPlayer(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe("validateScore", () => {
+  it("normalises both scores to numbers and calls next", () => {
+    const req = { body: { scoreA: "16", scoreB: "8" } };
+    const next = vi.fn();
+
+    validateScore(req, fakeResponse(), next);
+
+    expect(next).toHaveBeenCalled();
+    expect(req.body.scoreA).toBe(16);
+    expect(req.body.scoreB).toBe(8);
+  });
+
+  it("accepts a score of zero", () => {
+    const req = { body: { scoreA: "0", scoreB: "24" } };
+    const next = vi.fn();
+
+    validateScore(req, fakeResponse(), next);
+
+    expect(next).toHaveBeenCalled();
+  });
+
+  it("rejects a missing score for team A", () => {
+    const req = { body: { scoreB: "8" } };
+    const res = fakeResponse();
+    validateScore(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects a negative score for team B", () => {
+    const req = { body: { scoreA: "16", scoreB: "-1" } };
+    const res = fakeResponse();
+    validateScore(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects a non-integer score", () => {
+    const req = { body: { scoreA: "16.5", scoreB: "8" } };
+    const res = fakeResponse();
+    validateScore(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 });

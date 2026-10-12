@@ -10,6 +10,14 @@ vi.mock("../src/services/tournamentRounds.js", () => ({
   generateNextRound: vi.fn(),
 }));
 
+vi.mock("../src/services/tournamentScores.js", () => ({
+  recordScore: vi.fn(),
+}));
+
+vi.mock("../src/services/tournamentStandings.js", () => ({
+  getStandings: vi.fn(),
+}));
+
 // requireAuth is real middleware; these are the two services it calls, so a
 // logged in admin or member can be simulated without real session cookies.
 vi.mock("../src/services/session.js", () => ({
@@ -22,6 +30,8 @@ vi.mock("../src/services/auth.js", () => ({
 import { createApp } from "../src/app.js";
 import { createTournament, registerPlayer, removePlayer } from "../src/services/tournaments.js";
 import { generateNextRound } from "../src/services/tournamentRounds.js";
+import { recordScore } from "../src/services/tournamentScores.js";
+import { getStandings } from "../src/services/tournamentStandings.js";
 import { readSessionUserId } from "../src/services/session.js";
 import { getUserById } from "../src/services/auth.js";
 
@@ -314,5 +324,114 @@ describe("POST /api/tournaments/:id/rounds", () => {
       sitOutPlayerIds: [5],
     });
     expect(generateNextRound).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("POST /api/tournaments/:id/matches/:matchId/score", () => {
+  function postScore(id, matchId, body, cookie = "session=whatever") {
+    return fetch(`${baseUrl}/api/tournaments/${id}/matches/${matchId}/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify(body),
+    });
+  }
+
+  const validScore = { scoreA: 16, scoreB: 8 };
+
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await postScore(1, 2, validScore, "");
+
+    expect(res.status).toBe(401);
+    expect(recordScore).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a non-admin", async () => {
+    getUserById.mockResolvedValue({ id: 1, role: "member" });
+
+    const res = await postScore(1, 2, validScore);
+
+    expect(res.status).toBe(403);
+    expect(recordScore).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid body without calling the service", async () => {
+    const res = await postScore(1, 2, { scoreA: -1, scoreB: 8 });
+
+    expect(res.status).toBe(400);
+    expect(recordScore).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the match does not exist in this tournament", async () => {
+    recordScore.mockResolvedValue({ outcome: "not_found" });
+
+    const res = await postScore(1, 99, validScore);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 with a clear message when the scores do not add up to the configured total", async () => {
+    recordScore.mockResolvedValue({ outcome: "invalid_total" });
+
+    const res = await postScore(1, 2, validScore);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/add up to this tournament's points per match/i);
+  });
+
+  it("records the score for an admin", async () => {
+    recordScore.mockResolvedValue({ outcome: "recorded" });
+
+    const res = await postScore(1, 2, validScore);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ recorded: true });
+    expect(recordScore).toHaveBeenCalledWith(1, 2, validScore);
+  });
+});
+
+describe("GET /api/tournaments/:id/standings", () => {
+  function getStandingsFor(id, cookie = "session=whatever") {
+    return fetch(`${baseUrl}/api/tournaments/${id}/standings`, { headers: { Cookie: cookie } });
+  }
+
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await getStandingsFor(1, "");
+
+    expect(res.status).toBe(401);
+    expect(getStandings).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a non-admin", async () => {
+    getUserById.mockResolvedValue({ id: 1, role: "member" });
+
+    const res = await getStandingsFor(1);
+
+    expect(res.status).toBe(403);
+    expect(getStandings).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the tournament does not exist", async () => {
+    getStandings.mockResolvedValue(null);
+
+    const res = await getStandingsFor(99);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns the standings for an admin", async () => {
+    const standings = [
+      { rank: 1, id: 1, displayName: "Alex", points: 30, matchesPlayed: 2, pointsDifference: 10 },
+    ];
+    getStandings.mockResolvedValue(standings);
+
+    const res = await getStandingsFor(1);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(standings);
+    expect(getStandings).toHaveBeenCalledWith(1);
   });
 });
