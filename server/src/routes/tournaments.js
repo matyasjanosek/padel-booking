@@ -5,6 +5,7 @@ import {
   validateRegisterPlayer,
 } from "../middleware/validateTournament.js";
 import { createTournament, registerPlayer, removePlayer } from "../services/tournaments.js";
+import { generateNextRound } from "../services/tournamentRounds.js";
 
 export const tournamentsRouter = Router();
 
@@ -87,3 +88,46 @@ tournamentsRouter.delete(
     }
   },
 );
+
+tournamentsRouter.post("/tournaments/:id/rounds", requireAuth, requireAdmin, async (req, res) => {
+  const tournamentId = Number(req.params.id);
+  if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
+    return res.status(400).json({ error: "Invalid tournament id" });
+  }
+
+  try {
+    const result = await generateNextRound(tournamentId);
+    if (result.outcome === "not_found") {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+    if (result.outcome === "unsupported_format") {
+      return res
+        .status(400)
+        .json({ error: "Only Mexicano tournaments support round generation right now" });
+    }
+    if (result.outcome === "previous_round_incomplete") {
+      return res
+        .status(409)
+        .json({ error: "Every match in the current round needs a score first" });
+    }
+    if (result.outcome === "tournament_complete") {
+      return res
+        .status(409)
+        .json({ error: "This tournament has already generated all its rounds" });
+    }
+    if (result.outcome === "not_enough_players") {
+      return res.status(409).json({ error: "At least 4 players are needed to generate a round" });
+    }
+    if (result.outcome === "no_courts_available") {
+      return res.status(409).json({ error: "No active courts are available" });
+    }
+    res.status(201).json({
+      round: result.round,
+      matches: result.matches,
+      sitOutPlayerIds: result.sitOutPlayerIds,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not generate the round" });
+  }
+});

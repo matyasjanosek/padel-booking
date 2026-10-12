@@ -1,8 +1,8 @@
 import { prisma } from "../db/client.js";
 
-export function createTournament({ name, format, pointsPerMatch, courtCount }) {
+export function createTournament({ name, format, pointsPerMatch, courtCount, roundCount }) {
   return prisma.tournament.create({
-    data: { name, format, pointsPerMatch, courtCount },
+    data: { name, format, pointsPerMatch, courtCount, roundCount },
   });
 }
 
