@@ -2,17 +2,32 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../src/db/client.js", () => ({
   prisma: {
-    tournament: { create: vi.fn(), findUnique: vi.fn() },
+    tournament: { create: vi.fn(), findUnique: vi.fn(), findMany: vi.fn() },
     user: { findUnique: vi.fn() },
     tournamentPlayer: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
   },
 }));
 
 import { prisma } from "../src/db/client.js";
-import { createTournament, registerPlayer, removePlayer } from "../src/services/tournaments.js";
+import {
+  listTournaments,
+  createTournament,
+  registerPlayer,
+  removePlayer,
+} from "../src/services/tournaments.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe("listTournaments", () => {
+  it("returns every tournament, newest first", async () => {
+    prisma.tournament.findMany.mockResolvedValue([]);
+
+    await listTournaments();
+
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith({ orderBy: { id: "desc" } });
+  });
 });
 
 describe("createTournament", () => {
