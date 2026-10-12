@@ -3,9 +3,11 @@ import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import {
   validateCreateTournament,
   validateRegisterPlayer,
+  validateScore,
 } from "../middleware/validateTournament.js";
 import { createTournament, registerPlayer, removePlayer } from "../services/tournaments.js";
 import { generateNextRound } from "../services/tournamentRounds.js";
+import { recordScore } from "../services/tournamentScores.js";
 
 export const tournamentsRouter = Router();
 
@@ -131,3 +133,38 @@ tournamentsRouter.post("/tournaments/:id/rounds", requireAuth, requireAdmin, asy
     res.status(500).json({ error: "Could not generate the round" });
   }
 });
+
+tournamentsRouter.post(
+  "/tournaments/:id/matches/:matchId/score",
+  requireAuth,
+  requireAdmin,
+  validateScore,
+  async (req, res) => {
+    const tournamentId = Number(req.params.id);
+    const matchId = Number(req.params.matchId);
+    if (
+      !Number.isInteger(tournamentId) ||
+      tournamentId <= 0 ||
+      !Number.isInteger(matchId) ||
+      matchId <= 0
+    ) {
+      return res.status(400).json({ error: "Invalid tournament or match id" });
+    }
+
+    try {
+      const result = await recordScore(tournamentId, matchId, req.body);
+      if (result.outcome === "not_found") {
+        return res.status(404).json({ error: "Match not found in this tournament" });
+      }
+      if (result.outcome === "invalid_total") {
+        return res
+          .status(400)
+          .json({ error: "The two scores must add up to this tournament's points per match" });
+      }
+      res.status(200).json({ recorded: true });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Could not record the score" });
+    }
+  },
+);
