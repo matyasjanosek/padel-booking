@@ -36,6 +36,22 @@ export async function recordScore(tournamentId, matchId, { scoreA, scoreB }) {
     };
   }
 
+  // The tournament itself is finished once its last round's last score
+  // comes in, so that is checked here rather than left for every page that
+  // shows a tournament to work out on its own. Every other match in this
+  // round has to already have a score, this one is about to get one as
+  // part of the same update.
+  const isLastRound = match.round === match.tournament.roundCount;
+  let tournamentFinished = false;
+  if (isLastRound) {
+    const otherMatchesInRound = await prisma.tournamentMatch.findMany({
+      where: { tournamentId, round: match.round, id: { not: matchId } },
+    });
+    tournamentFinished = otherMatchesInRound.every(
+      (otherMatch) => otherMatch.scoreA !== null && otherMatch.scoreB !== null,
+    );
+  }
+
   await prisma.$transaction([
     prisma.tournamentMatch.update({
       where: { id: matchId },
@@ -47,6 +63,9 @@ export async function recordScore(tournamentId, matchId, { scoreA, scoreB }) {
     ...teamBIds.map((id) =>
       prisma.tournamentPlayer.update({ where: { id }, data: creditData(deltaB) }),
     ),
+    ...(tournamentFinished
+      ? [prisma.tournament.update({ where: { id: tournamentId }, data: { status: "finished" } })]
+      : []),
   ]);
 
   return { outcome: "recorded" };
