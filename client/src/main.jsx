@@ -1,9 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import Layout from "./components/Layout.jsx";
 import RequireAuth from "./components/RequireAuth.jsx";
+import RequireAdmin from "./components/RequireAdmin.jsx";
+import AdminLayout from "./components/AdminLayout.jsx";
 import App from "./App.jsx";
 import Info from "./pages/Info.jsx";
 import Booking from "./pages/Booking.jsx";
@@ -14,6 +16,7 @@ import Account from "./pages/Account.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import Tournament from "./pages/Tournament.jsx";
 import TournamentDisplay from "./pages/TournamentDisplay.jsx";
+import AdminBookings from "./pages/AdminBookings.jsx";
 import "./styles/main.css";
 
 createRoot(document.getElementById("root")).render(
@@ -34,6 +37,12 @@ createRoot(document.getElementById("root")).render(
             <Route element={<RequireAuth />}>
               <Route path="/account" element={<Account />} />
               <Route path="/booking/:id/checkout" element={<Checkout />} />
+            </Route>
+          </Route>
+          <Route path="/admin" element={<RequireAdmin />}>
+            <Route element={<AdminLayout />}>
+              <Route index element={<Navigate to="/admin/bookings" replace />} />
+              <Route path="bookings" element={<AdminBookings />} />
             </Route>
           </Route>
         </Routes>
