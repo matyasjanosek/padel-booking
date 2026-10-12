@@ -1,5 +1,11 @@
 import { prisma } from "../db/client.js";
 
+// Newest first: the admin cares about whichever tournament is current, not
+// ones that finished long ago.
+export function listTournaments() {
+  return prisma.tournament.findMany({ orderBy: { id: "desc" } });
+}
+
 export function createTournament({ name, format, pointsPerMatch, courtCount, roundCount }) {
   return prisma.tournament.create({
     data: { name, format, pointsPerMatch, courtCount, roundCount },

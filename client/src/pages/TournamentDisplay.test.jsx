@@ -89,6 +89,18 @@ describe("TournamentDisplay", () => {
     expect(screen.getByText("40")).toBeInTheDocument();
   });
 
+  it("shows the tournament is finished once its status says so", async () => {
+    fetchTournamentOverview.mockResolvedValue({
+      ...overview,
+      tournament: { ...overview.tournament, status: "finished" },
+      currentRound: 6,
+      isCurrentRoundComplete: true,
+    });
+    renderDisplay();
+
+    expect(await screen.findByText("Tournament finished.")).toBeInTheDocument();
+  });
+
   it("polls for a fresh overview every 5 seconds", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     fetchTournamentOverview.mockResolvedValue(overview);
