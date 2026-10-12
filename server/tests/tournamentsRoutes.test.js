@@ -18,6 +18,10 @@ vi.mock("../src/services/tournamentStandings.js", () => ({
   getStandings: vi.fn(),
 }));
 
+vi.mock("../src/services/tournamentOverview.js", () => ({
+  getTournamentOverview: vi.fn(),
+}));
+
 // requireAuth is real middleware; these are the two services it calls, so a
 // logged in admin or member can be simulated without real session cookies.
 vi.mock("../src/services/session.js", () => ({
@@ -32,6 +36,7 @@ import { createTournament, registerPlayer, removePlayer } from "../src/services/
 import { generateNextRound } from "../src/services/tournamentRounds.js";
 import { recordScore } from "../src/services/tournamentScores.js";
 import { getStandings } from "../src/services/tournamentStandings.js";
+import { getTournamentOverview } from "../src/services/tournamentOverview.js";
 import { readSessionUserId } from "../src/services/session.js";
 import { getUserById } from "../src/services/auth.js";
 
@@ -433,5 +438,40 @@ describe("GET /api/tournaments/:id/standings", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual(standings);
     expect(getStandings).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("GET /api/tournaments/:id/overview", () => {
+  it("is public, no session cookie needed", async () => {
+    getTournamentOverview.mockResolvedValue({ tournament: { id: 1 }, matches: [] });
+
+    const res = await fetch(`${baseUrl}/api/tournaments/1/overview`);
+
+    expect(res.status).toBe(200);
+    expect(getTournamentOverview).toHaveBeenCalledWith(1);
+  });
+
+  it("returns 404 when the tournament does not exist", async () => {
+    getTournamentOverview.mockResolvedValue(null);
+
+    const res = await fetch(`${baseUrl}/api/tournaments/99/overview`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 for an invalid id without calling the service", async () => {
+    const res = await fetch(`${baseUrl}/api/tournaments/not-a-number/overview`);
+
+    expect(res.status).toBe(400);
+    expect(getTournamentOverview).not.toHaveBeenCalled();
+  });
+
+  it("returns the overview", async () => {
+    const overview = { tournament: { id: 1, name: "Summer Mexicano" }, matches: [], standings: [] };
+    getTournamentOverview.mockResolvedValue(overview);
+
+    const res = await fetch(`${baseUrl}/api/tournaments/1/overview`);
+
+    expect(await res.json()).toEqual(overview);
   });
 });
