@@ -12,6 +12,8 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Account from "./pages/Account.jsx";
 import Checkout from "./pages/Checkout.jsx";
+import Tournament from "./pages/Tournament.jsx";
+import TournamentDisplay from "./pages/TournamentDisplay.jsx";
 import "./styles/main.css";
 
 createRoot(document.getElementById("root")).render(
@@ -19,6 +21,8 @@ createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          {/* No navigation on purpose, a TV in fullscreen at the court. */}
+          <Route path="/tournaments/:id/display" element={<TournamentDisplay />} />
           <Route element={<Layout />}>
             <Route path="/" element={<App />} />
             <Route path="/info" element={<Info />} />
@@ -26,6 +30,7 @@ createRoot(document.getElementById("root")).render(
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/tournaments/:id" element={<Tournament />} />
             <Route element={<RequireAuth />}>
               <Route path="/account" element={<Account />} />
               <Route path="/booking/:id/checkout" element={<Checkout />} />
