@@ -6,6 +6,10 @@ vi.mock("../src/services/tournaments.js", () => ({
   removePlayer: vi.fn(),
 }));
 
+vi.mock("../src/services/tournamentRounds.js", () => ({
+  generateNextRound: vi.fn(),
+}));
+
 // requireAuth is real middleware; these are the two services it calls, so a
 // logged in admin or member can be simulated without real session cookies.
 vi.mock("../src/services/session.js", () => ({
@@ -17,6 +21,7 @@ vi.mock("../src/services/auth.js", () => ({
 
 import { createApp } from "../src/app.js";
 import { createTournament, registerPlayer, removePlayer } from "../src/services/tournaments.js";
+import { generateNextRound } from "../src/services/tournamentRounds.js";
 import { readSessionUserId } from "../src/services/session.js";
 import { getUserById } from "../src/services/auth.js";
 
@@ -46,6 +51,7 @@ const validTournamentBody = {
   format: "americano",
   pointsPerMatch: 24,
   courtCount: 2,
+  roundCount: 6,
 };
 
 function postTournament(body = validTournamentBody, cookie = "session=whatever") {
@@ -214,5 +220,99 @@ describe("DELETE /api/tournaments/:id/players/:playerId", () => {
 
     expect(res.status).toBe(204);
     expect(removePlayer).toHaveBeenCalledWith(1, 2);
+  });
+});
+
+describe("POST /api/tournaments/:id/rounds", () => {
+  function postRound(id, cookie = "session=whatever") {
+    return fetch(`${baseUrl}/api/tournaments/${id}/rounds`, {
+      method: "POST",
+      headers: { Cookie: cookie },
+    });
+  }
+
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await postRound(1, "");
+
+    expect(res.status).toBe(401);
+    expect(generateNextRound).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a non-admin", async () => {
+    getUserById.mockResolvedValue({ id: 1, role: "member" });
+
+    const res = await postRound(1);
+
+    expect(res.status).toBe(403);
+    expect(generateNextRound).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the tournament does not exist", async () => {
+    generateNextRound.mockResolvedValue({ outcome: "not_found" });
+
+    const res = await postRound(99);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 for a tournament that is not mexicano", async () => {
+    generateNextRound.mockResolvedValue({ outcome: "unsupported_format" });
+
+    const res = await postRound(1);
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 409 when the previous round still needs scores", async () => {
+    generateNextRound.mockResolvedValue({ outcome: "previous_round_incomplete" });
+
+    const res = await postRound(1);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("returns 409 once every configured round has been generated", async () => {
+    generateNextRound.mockResolvedValue({ outcome: "tournament_complete" });
+
+    const res = await postRound(1);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("returns 409 with fewer than four players", async () => {
+    generateNextRound.mockResolvedValue({ outcome: "not_enough_players" });
+
+    const res = await postRound(1);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("returns 409 when there are no active courts", async () => {
+    generateNextRound.mockResolvedValue({ outcome: "no_courts_available" });
+
+    const res = await postRound(1);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("returns the generated round for an admin", async () => {
+    generateNextRound.mockResolvedValue({
+      outcome: "generated",
+      round: 2,
+      matches: [{ id: 1, round: 2, courtId: 10, teamA: [], teamB: [] }],
+      sitOutPlayerIds: [5],
+    });
+
+    const res = await postRound(1);
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({
+      round: 2,
+      matches: [{ id: 1, round: 2, courtId: 10, teamA: [], teamB: [] }],
+      sitOutPlayerIds: [5],
+    });
+    expect(generateNextRound).toHaveBeenCalledWith(1);
   });
 });

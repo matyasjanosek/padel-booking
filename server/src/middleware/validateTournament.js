@@ -1,7 +1,7 @@
 const FORMATS = ["americano", "mexicano", "round_robin"];
 
 export function validateCreateTournament(req, res, next) {
-  const { name, format, pointsPerMatch, courtCount } = req.body;
+  const { name, format, pointsPerMatch, courtCount, roundCount } = req.body;
 
   if (typeof name !== "string" || name.trim().length === 0) {
     return res.status(400).json({ error: "Enter a tournament name" });
@@ -18,9 +18,18 @@ export function validateCreateTournament(req, res, next) {
   if (!Number.isInteger(courtCountNumber) || courtCountNumber <= 0) {
     return res.status(400).json({ error: "Enter a valid number of courts" });
   }
+  // How many rounds the tournament runs for is decided here, up front, not
+  // left open-ended. Unlike round robin, Mexicano has no schedule to
+  // exhaust, so "keep generating until done" has no natural end on its own;
+  // a fixed count also lets a later TV display show "round 3 of 6".
+  const roundCountNumber = Number(roundCount);
+  if (!Number.isInteger(roundCountNumber) || roundCountNumber <= 0) {
+    return res.status(400).json({ error: "Enter a valid number of rounds" });
+  }
 
   req.body.pointsPerMatch = pointsPerMatchNumber;
   req.body.courtCount = courtCountNumber;
+  req.body.roundCount = roundCountNumber;
   next();
 }
 

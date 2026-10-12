@@ -21,7 +21,13 @@ function fakeResponse() {
 
 describe("validateCreateTournament", () => {
   function validBody() {
-    return { name: "Summer Americano", format: "americano", pointsPerMatch: "24", courtCount: "2" };
+    return {
+      name: "Summer Americano",
+      format: "americano",
+      pointsPerMatch: "24",
+      courtCount: "2",
+      roundCount: "6",
+    };
   }
 
   it("normalises the numbers and calls next for a valid request", () => {
@@ -33,6 +39,7 @@ describe("validateCreateTournament", () => {
     expect(next).toHaveBeenCalled();
     expect(req.body.pointsPerMatch).toBe(24);
     expect(req.body.courtCount).toBe(2);
+    expect(req.body.roundCount).toBe(6);
   });
 
   it("rejects a missing name", () => {
@@ -58,6 +65,13 @@ describe("validateCreateTournament", () => {
 
   it("rejects a non-positive court count", () => {
     const req = { body: { ...validBody(), courtCount: "-1" } };
+    const res = fakeResponse();
+    validateCreateTournament(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("rejects a non-positive round count", () => {
+    const req = { body: { ...validBody(), roundCount: "0" } };
     const res = fakeResponse();
     validateCreateTournament(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
