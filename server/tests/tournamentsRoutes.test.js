@@ -14,6 +14,10 @@ vi.mock("../src/services/tournamentScores.js", () => ({
   recordScore: vi.fn(),
 }));
 
+vi.mock("../src/services/tournamentStandings.js", () => ({
+  getStandings: vi.fn(),
+}));
+
 // requireAuth is real middleware; these are the two services it calls, so a
 // logged in admin or member can be simulated without real session cookies.
 vi.mock("../src/services/session.js", () => ({
@@ -27,6 +31,7 @@ import { createApp } from "../src/app.js";
 import { createTournament, registerPlayer, removePlayer } from "../src/services/tournaments.js";
 import { generateNextRound } from "../src/services/tournamentRounds.js";
 import { recordScore } from "../src/services/tournamentScores.js";
+import { getStandings } from "../src/services/tournamentStandings.js";
 import { readSessionUserId } from "../src/services/session.js";
 import { getUserById } from "../src/services/auth.js";
 
@@ -383,5 +388,50 @@ describe("POST /api/tournaments/:id/matches/:matchId/score", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ recorded: true });
     expect(recordScore).toHaveBeenCalledWith(1, 2, validScore);
+  });
+});
+
+describe("GET /api/tournaments/:id/standings", () => {
+  function getStandingsFor(id, cookie = "session=whatever") {
+    return fetch(`${baseUrl}/api/tournaments/${id}/standings`, { headers: { Cookie: cookie } });
+  }
+
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await getStandingsFor(1, "");
+
+    expect(res.status).toBe(401);
+    expect(getStandings).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a non-admin", async () => {
+    getUserById.mockResolvedValue({ id: 1, role: "member" });
+
+    const res = await getStandingsFor(1);
+
+    expect(res.status).toBe(403);
+    expect(getStandings).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the tournament does not exist", async () => {
+    getStandings.mockResolvedValue(null);
+
+    const res = await getStandingsFor(99);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns the standings for an admin", async () => {
+    const standings = [
+      { rank: 1, id: 1, displayName: "Alex", points: 30, matchesPlayed: 2, pointsDifference: 10 },
+    ];
+    getStandings.mockResolvedValue(standings);
+
+    const res = await getStandingsFor(1);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(standings);
+    expect(getStandings).toHaveBeenCalledWith(1);
   });
 });
