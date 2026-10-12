@@ -135,9 +135,32 @@ describe("Booking", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
 
     await waitFor(() =>
-      expect(createBooking).toHaveBeenCalledWith({ courtId: 1, startTime: freeSlot.startTime }),
+      expect(createBooking).toHaveBeenCalledWith({
+        courtId: 1,
+        startTime: freeSlot.startTime,
+        couponCode: undefined,
+      }),
     );
     expect(navigate).toHaveBeenCalledWith("/booking/42/checkout");
+  });
+
+  it("sends a trimmed coupon code along with the booking", async () => {
+    createBooking.mockResolvedValue({ id: 42 });
+    renderBooking();
+
+    fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
+    fireEvent.change(await screen.findByLabelText(/coupon code/i), {
+      target: { value: "  summer10  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+
+    await waitFor(() =>
+      expect(createBooking).toHaveBeenCalledWith({
+        courtId: 1,
+        startTime: freeSlot.startTime,
+        couponCode: "summer10",
+      }),
+    );
   });
 
   it("shows the server's message and refreshes availability when someone else took the slot first", async () => {

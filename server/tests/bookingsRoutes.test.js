@@ -79,6 +79,20 @@ describe("POST /api/bookings", () => {
       userId: 1,
       courtId: 1,
       startTime: new Date(VALID_START),
+      couponCode: undefined,
+    });
+  });
+
+  it("passes a trimmed coupon code through to the service", async () => {
+    createBooking.mockResolvedValue({ id: 42 });
+
+    await postBooking({ courtId: 1, startTime: VALID_START, couponCode: "  summer10  " });
+
+    expect(createBooking).toHaveBeenCalledWith({
+      userId: 1,
+      courtId: 1,
+      startTime: new Date(VALID_START),
+      couponCode: "summer10",
     });
   });
 
@@ -108,6 +122,17 @@ describe("POST /api/bookings", () => {
     const res = await postBooking({ courtId: 999, startTime: VALID_START });
 
     expect(res.status).toBe(404);
+  });
+
+  it("returns 400 with the coupon's own message when the coupon code is rejected", async () => {
+    createBooking.mockRejectedValue(
+      Object.assign(new Error("This coupon has expired."), { code: "COUPON_ERROR" }),
+    );
+
+    const res = await postBooking({ courtId: 1, startTime: VALID_START, couponCode: "OLD" });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("This coupon has expired.");
   });
 });
 
