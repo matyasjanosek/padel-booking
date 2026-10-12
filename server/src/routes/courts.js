@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { listCourts } from "../services/courts.js";
+import { listActiveCourts } from "../services/courts.js";
 
 export const courtsRouter = Router();
 
 courtsRouter.get("/courts", async (req, res) => {
   try {
-    const courts = await listCourts();
+    const courts = await listActiveCourts();
     res.json(courts);
   } catch (error) {
     console.error(error);

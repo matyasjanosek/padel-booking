@@ -10,6 +10,7 @@ vi.mock("../src/db/client.js", () => ({
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
     },
+    court: { findUnique: vi.fn() },
     payment: { findUnique: vi.fn(), delete: vi.fn() },
   },
 }));
@@ -36,6 +37,9 @@ beforeEach(() => {
   // covered in payments.test.js, cancelBooking's tests just need it to not
   // throw when it runs as part of cancelling.
   prisma.payment.findUnique.mockResolvedValue(null);
+  // createBooking's tests mostly care about other things, an active court
+  // is the sensible default so that check never gets in their way.
+  prisma.court.findUnique.mockResolvedValue({ id: 2, name: "Court 2", isActive: true });
 });
 
 describe("createBooking", () => {
@@ -123,6 +127,26 @@ describe("createBooking", () => {
     ).rejects.toBe(foreignKeyError);
 
     expect(prisma.booking.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("rejects with a court not found style error when the court does not exist, before touching bookings", async () => {
+    prisma.court.findUnique.mockResolvedValue(null);
+
+    await expect(
+      createBooking({ userId: 5, courtId: 999, startTime: new Date("2030-06-10T07:00:00.000Z") }),
+    ).rejects.toMatchObject({ code: "P2003" });
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects the same way when the court exists but is inactive", async () => {
+    prisma.court.findUnique.mockResolvedValue({ id: 2, name: "Court 2", isActive: false });
+
+    await expect(
+      createBooking({ userId: 5, courtId: 2, startTime: new Date("2030-06-10T07:00:00.000Z") }),
+    ).rejects.toMatchObject({ code: "P2003" });
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
   });
 });
 

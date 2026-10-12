@@ -21,12 +21,14 @@ export function slotStartsForDay(date) {
   return starts;
 }
 
-// Returns null when the court does not exist. Otherwise the full list of
-// slots for that day, each marked free or taken. Times are stored and
-// compared in UTC but shown in Europe/Prague, see src/timezone.js.
+// Returns null when the court does not exist or is not active, an inactive
+// court is not offered for a new booking, the same way as if it did not
+// exist. Otherwise the full list of slots for that day, each marked free or
+// taken. Times are stored and compared in UTC but shown in Europe/Prague,
+// see src/timezone.js.
 export async function getAvailability(courtId, date) {
   const court = await prisma.court.findUnique({ where: { id: courtId } });
-  if (!court) {
+  if (!court || !court.isActive) {
     return null;
   }
 

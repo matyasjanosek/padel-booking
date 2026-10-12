@@ -26,7 +26,7 @@ function availabilityQueryCall() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  prisma.court.findUnique.mockResolvedValue({ id: 1, name: "Court 1" });
+  prisma.court.findUnique.mockResolvedValue({ id: 1, name: "Court 1", isActive: true });
   prisma.booking.findMany.mockResolvedValue([]);
   prisma.booking.updateMany.mockResolvedValue({ count: 0 });
   prisma.payment.findUnique.mockResolvedValue(null);
@@ -37,6 +37,15 @@ describe("getAvailability", () => {
     prisma.court.findUnique.mockResolvedValue(null);
 
     const result = await getAvailability(99, "2026-09-20");
+
+    expect(result).toBeNull();
+    expect(prisma.booking.findMany).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the court is inactive, the same as if it did not exist", async () => {
+    prisma.court.findUnique.mockResolvedValue({ id: 1, name: "Court 1", isActive: false });
+
+    const result = await getAvailability(1, "2026-09-20");
 
     expect(result).toBeNull();
     expect(prisma.booking.findMany).not.toHaveBeenCalled();
