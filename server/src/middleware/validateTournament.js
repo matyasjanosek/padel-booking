@@ -55,3 +55,23 @@ export function validateRegisterPlayer(req, res, next) {
 
   next();
 }
+
+// Whether the two scores actually add up to the tournament's configured
+// points per match is checked in the service, once it has the tournament
+// loaded; this only checks the shape of what was sent.
+export function validateScore(req, res, next) {
+  const { scoreA, scoreB } = req.body;
+  const scoreANumber = Number(scoreA);
+  const scoreBNumber = Number(scoreB);
+
+  if (!Number.isInteger(scoreANumber) || scoreANumber < 0) {
+    return res.status(400).json({ error: "Enter a valid score for team A" });
+  }
+  if (!Number.isInteger(scoreBNumber) || scoreBNumber < 0) {
+    return res.status(400).json({ error: "Enter a valid score for team B" });
+  }
+
+  req.body.scoreA = scoreANumber;
+  req.body.scoreB = scoreBNumber;
+  next();
+}
