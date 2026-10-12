@@ -2,6 +2,7 @@ import { prisma } from "../db/client.js";
 import { SLOT_LENGTH_MINUTES, HOLD_MINUTES, PRICE_PER_SLOT_CZK } from "../config.js";
 import { formatPragueIso } from "../timezone.js";
 import { releasePaymentIfPending } from "./payments.js";
+import { validateCoupon, applyDiscount, COUPON_ERROR_MESSAGES } from "./coupons.js";
 
 const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 const HOLD_MS = HOLD_MINUTES * 60 * 1000;
@@ -35,7 +36,7 @@ function reclaimableConditions() {
 // brand new slot. If it affects no rows, the slot is genuinely taken, or
 // someone else's request reclaimed it a moment earlier, and the original
 // P2002 propagates instead.
-export async function createBooking({ userId, courtId, startTime }) {
+export async function createBooking({ userId, courtId, startTime, couponCode }) {
   // An inactive court is not bookable, the same as if it did not exist.
   // There is no foreign key for "and the court must be active", so this
   // needs its own check; thrown with a P2003 code so the existing "court
@@ -46,14 +47,31 @@ export async function createBooking({ userId, courtId, startTime }) {
     throw Object.assign(new Error("Court not found"), { code: "P2003" });
   }
 
+  // Applying the code only checks it is currently usable, it does not count
+  // as a use yet, see handlePaymentSucceeded in stripeWebhook.js for that.
+  // A bad code is rejected here, before any booking row exists.
+  let price = PRICE_PER_SLOT_CZK;
+  let couponId = null;
+  if (couponCode) {
+    const result = await validateCoupon(couponCode);
+    if (result.outcome !== "valid") {
+      throw Object.assign(new Error(COUPON_ERROR_MESSAGES[result.outcome]), {
+        code: "COUPON_ERROR",
+      });
+    }
+    price = applyDiscount(price, result.coupon);
+    couponId = result.coupon.id;
+  }
+
   const endTime = new Date(startTime.getTime() + SLOT_LENGTH_MS);
   const data = {
     userId,
     courtId,
+    couponId,
     startTime,
     endTime,
     status: "pending",
-    price: PRICE_PER_SLOT_CZK,
+    price,
     holdExpiresAt: new Date(Date.now() + HOLD_MS),
   };
 
@@ -81,6 +99,7 @@ export function listBookingsForUser(userId) {
   return prisma.booking.findMany({
     where: { userId },
     orderBy: { startTime: "desc" },
+    include: { coupon: true },
   });
 }
 
@@ -126,6 +145,9 @@ export function toPublicBooking(booking) {
     status: booking.status,
     // price is a Prisma Decimal, which serialises to a string in JSON.
     price: Number(booking.price),
+    // Only present when the booking's coupon was included in the query it
+    // came from (listBookingsForUser does this, so Checkout can show it).
+    couponCode: booking.coupon?.code ?? null,
     holdExpiresAt: booking.holdExpiresAt ? formatPragueIso(booking.holdExpiresAt) : null,
   };
 }

@@ -76,6 +76,25 @@ describe("validateCreateBooking", () => {
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
+
+  it("leaves couponCode undefined when none is given", () => {
+    const req = { body: { courtId: "1", startTime: VALID_START } };
+    validateCreateBooking(req, fakeResponse(), vi.fn());
+    expect(req.body.couponCode).toBeUndefined();
+  });
+
+  it("trims a given coupon code", () => {
+    const req = { body: { courtId: "1", startTime: VALID_START, couponCode: "  summer10  " } };
+    validateCreateBooking(req, fakeResponse(), vi.fn());
+    expect(req.body.couponCode).toBe("summer10");
+  });
+
+  it("rejects a coupon code that is not a string", () => {
+    const req = { body: { courtId: "1", startTime: VALID_START, couponCode: 123 } };
+    const res = fakeResponse();
+    validateCreateBooking(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+  });
 });
 
 describe("validateRescheduleBooking", () => {

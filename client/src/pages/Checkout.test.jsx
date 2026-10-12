@@ -88,6 +88,24 @@ describe("Checkout", () => {
     expect(createPaymentIntent).toHaveBeenCalledWith(1);
   });
 
+  it("shows the applied coupon code next to the already discounted price", async () => {
+    fetchMyBookings.mockResolvedValue([{ ...pendingBooking, price: 360, couponCode: "SUMMER10" }]);
+    createPaymentIntent.mockReturnValue(new Promise(() => {}));
+    renderCheckout();
+
+    expect(await screen.findByText("360 CZK")).toBeInTheDocument();
+    expect(screen.getByText(/coupon summer10 applied/i)).toBeInTheDocument();
+  });
+
+  it("shows no coupon note when none was applied", async () => {
+    fetchMyBookings.mockResolvedValue([pendingBooking]);
+    createPaymentIntent.mockReturnValue(new Promise(() => {}));
+    renderCheckout();
+
+    await screen.findByText("400 CZK");
+    expect(screen.queryByText(/coupon/i)).not.toBeInTheDocument();
+  });
+
   it("renders the payment element once the payment intent is ready", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
     createPaymentIntent.mockResolvedValue({
