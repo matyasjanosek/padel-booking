@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 vi.mock("../src/services/tournaments.js", () => ({
   createTournament: vi.fn(),
   registerPlayer: vi.fn(),
+  removePlayer: vi.fn(),
 }));
 
 // requireAuth is real middleware; these are the two services it calls, so a
@@ -15,7 +16,7 @@ vi.mock("../src/services/auth.js", () => ({
 }));
 
 import { createApp } from "../src/app.js";
-import { createTournament, registerPlayer } from "../src/services/tournaments.js";
+import { createTournament, registerPlayer, removePlayer } from "../src/services/tournaments.js";
 import { readSessionUserId } from "../src/services/session.js";
 import { getUserById } from "../src/services/auth.js";
 
@@ -161,5 +162,57 @@ describe("POST /api/tournaments/:id/players", () => {
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ id: 1, displayName: "Guest Alex" });
     expect(registerPlayer).toHaveBeenCalledWith(1, { displayName: "Guest Alex" });
+  });
+});
+
+describe("DELETE /api/tournaments/:id/players/:playerId", () => {
+  function deletePlayer(id, playerId, cookie = "session=whatever") {
+    return fetch(`${baseUrl}/api/tournaments/${id}/players/${playerId}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie },
+    });
+  }
+
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await deletePlayer(1, 2, "");
+
+    expect(res.status).toBe(401);
+    expect(removePlayer).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a non-admin", async () => {
+    getUserById.mockResolvedValue({ id: 1, role: "member" });
+
+    const res = await deletePlayer(1, 2);
+
+    expect(res.status).toBe(403);
+    expect(removePlayer).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the player is not in this tournament", async () => {
+    removePlayer.mockResolvedValue({ outcome: "not_found" });
+
+    const res = await deletePlayer(1, 99);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 409 when the tournament is no longer a draft", async () => {
+    removePlayer.mockResolvedValue({ outcome: "not_draft" });
+
+    const res = await deletePlayer(1, 2);
+
+    expect(res.status).toBe(409);
+  });
+
+  it("removes the player for an admin while the tournament is a draft", async () => {
+    removePlayer.mockResolvedValue({ outcome: "removed" });
+
+    const res = await deletePlayer(1, 2);
+
+    expect(res.status).toBe(204);
+    expect(removePlayer).toHaveBeenCalledWith(1, 2);
   });
 });
