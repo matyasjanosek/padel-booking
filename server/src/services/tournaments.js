@@ -36,3 +36,22 @@ export async function registerPlayer(tournamentId, { userId, displayName }) {
   });
   return { outcome: "registered", player };
 }
+
+// Only while the tournament is still a draft: once a schedule exists,
+// matches reference tournament players directly, and removing one would
+// leave those matches pointing at a player who is no longer there.
+export async function removePlayer(tournamentId, playerId) {
+  const player = await prisma.tournamentPlayer.findUnique({
+    where: { id: playerId },
+    include: { tournament: true },
+  });
+  if (!player || player.tournamentId !== tournamentId) {
+    return { outcome: "not_found" };
+  }
+  if (player.tournament.status !== "draft") {
+    return { outcome: "not_draft" };
+  }
+
+  await prisma.tournamentPlayer.delete({ where: { id: playerId } });
+  return { outcome: "removed" };
+}

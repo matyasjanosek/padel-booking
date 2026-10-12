@@ -4,12 +4,12 @@ vi.mock("../src/db/client.js", () => ({
   prisma: {
     tournament: { create: vi.fn(), findUnique: vi.fn() },
     user: { findUnique: vi.fn() },
-    tournamentPlayer: { create: vi.fn(), findFirst: vi.fn() },
+    tournamentPlayer: { create: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
   },
 }));
 
 import { prisma } from "../src/db/client.js";
-import { createTournament, registerPlayer } from "../src/services/tournaments.js";
+import { createTournament, registerPlayer, removePlayer } from "../src/services/tournaments.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -88,5 +88,58 @@ describe("registerPlayer", () => {
 
     expect(result).toEqual({ outcome: "already_registered" });
     expect(prisma.tournamentPlayer.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("removePlayer", () => {
+  it("returns not_found when the player does not exist", async () => {
+    prisma.tournamentPlayer.findUnique.mockResolvedValue(null);
+
+    const result = await removePlayer(1, 99);
+
+    expect(result).toEqual({ outcome: "not_found" });
+  });
+
+  it("returns not_found when the player belongs to a different tournament", async () => {
+    prisma.tournamentPlayer.findUnique.mockResolvedValue({
+      id: 2,
+      tournamentId: 7,
+      tournament: { status: "draft" },
+    });
+
+    const result = await removePlayer(1, 2);
+
+    expect(result).toEqual({ outcome: "not_found" });
+    expect(prisma.tournamentPlayer.delete).not.toHaveBeenCalled();
+  });
+
+  it.each(["active", "finished"])(
+    "returns not_draft and does not remove the player when the tournament is %s",
+    async (status) => {
+      prisma.tournamentPlayer.findUnique.mockResolvedValue({
+        id: 2,
+        tournamentId: 1,
+        tournament: { status },
+      });
+
+      const result = await removePlayer(1, 2);
+
+      expect(result).toEqual({ outcome: "not_draft" });
+      expect(prisma.tournamentPlayer.delete).not.toHaveBeenCalled();
+    },
+  );
+
+  it("removes the player while the tournament is still a draft", async () => {
+    prisma.tournamentPlayer.findUnique.mockResolvedValue({
+      id: 2,
+      tournamentId: 1,
+      tournament: { status: "draft" },
+    });
+    prisma.tournamentPlayer.delete.mockResolvedValue({});
+
+    const result = await removePlayer(1, 2);
+
+    expect(prisma.tournamentPlayer.delete).toHaveBeenCalledWith({ where: { id: 2 } });
+    expect(result).toEqual({ outcome: "removed" });
   });
 });
