@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   scheduleLighting,
+  cancelLighting,
   openGate,
   getLightingSchedules,
   getGateEvents,
@@ -15,6 +16,27 @@ describe("simulatedHardware", () => {
 
     expect(schedule).toMatchObject({ courtId: 1, startTime, endTime });
     expect(getLightingSchedules().at(-1)).toBe(schedule);
+  });
+
+  it("removes the matching lighting schedule by court and start time", () => {
+    const startTime = new Date("2030-06-10T09:00:00.000Z");
+    const endTime = new Date("2030-06-10T10:00:00.000Z");
+    scheduleLighting({ courtId: 2, startTime, endTime });
+
+    cancelLighting({ courtId: 2, startTime });
+
+    expect(
+      getLightingSchedules().some(
+        (schedule) =>
+          schedule.courtId === 2 && schedule.startTime.getTime() === startTime.getTime(),
+      ),
+    ).toBe(false);
+  });
+
+  it("does nothing when there is no matching lighting schedule", () => {
+    expect(() =>
+      cancelLighting({ courtId: 99, startTime: new Date("2030-01-01T00:00:00.000Z") }),
+    ).not.toThrow();
   });
 
   it("stores and returns a gate open event for a booking", () => {
