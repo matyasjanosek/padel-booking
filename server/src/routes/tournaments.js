@@ -9,8 +9,29 @@ import { createTournament, registerPlayer, removePlayer } from "../services/tour
 import { generateNextRound } from "../services/tournamentRounds.js";
 import { recordScore } from "../services/tournamentScores.js";
 import { getStandings } from "../services/tournamentStandings.js";
+import { getTournamentOverview } from "../services/tournamentOverview.js";
 
 export const tournamentsRouter = Router();
+
+// Public, no login needed: the public tournament page and the TV display
+// both read from here. Everything else in this file is admin only.
+tournamentsRouter.get("/tournaments/:id/overview", async (req, res) => {
+  const tournamentId = Number(req.params.id);
+  if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
+    return res.status(400).json({ error: "Invalid tournament id" });
+  }
+
+  try {
+    const overview = await getTournamentOverview(tournamentId);
+    if (!overview) {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+    res.json(overview);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not load the tournament" });
+  }
+});
 
 tournamentsRouter.post(
   "/tournaments",
