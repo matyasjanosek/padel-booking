@@ -8,6 +8,7 @@ import {
 import { createTournament, registerPlayer, removePlayer } from "../services/tournaments.js";
 import { generateNextRound } from "../services/tournamentRounds.js";
 import { recordScore } from "../services/tournamentScores.js";
+import { getStandings } from "../services/tournamentStandings.js";
 
 export const tournamentsRouter = Router();
 
@@ -168,3 +169,21 @@ tournamentsRouter.post(
     }
   },
 );
+
+tournamentsRouter.get("/tournaments/:id/standings", requireAuth, requireAdmin, async (req, res) => {
+  const tournamentId = Number(req.params.id);
+  if (!Number.isInteger(tournamentId) || tournamentId <= 0) {
+    return res.status(400).json({ error: "Invalid tournament id" });
+  }
+
+  try {
+    const standings = await getStandings(tournamentId);
+    if (!standings) {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+    res.json(standings);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not load the standings" });
+  }
+});
