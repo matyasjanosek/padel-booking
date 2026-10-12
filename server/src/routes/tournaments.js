@@ -5,7 +5,12 @@ import {
   validateRegisterPlayer,
   validateScore,
 } from "../middleware/validateTournament.js";
-import { createTournament, registerPlayer, removePlayer } from "../services/tournaments.js";
+import {
+  listTournaments,
+  createTournament,
+  registerPlayer,
+  removePlayer,
+} from "../services/tournaments.js";
 import { generateNextRound } from "../services/tournamentRounds.js";
 import { recordScore } from "../services/tournamentScores.js";
 import { getStandings } from "../services/tournamentStandings.js";
@@ -30,6 +35,16 @@ tournamentsRouter.get("/tournaments/:id/overview", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Could not load the tournament" });
+  }
+});
+
+tournamentsRouter.get("/tournaments", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const tournaments = await listTournaments();
+    res.json(tournaments);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Could not load tournaments" });
   }
 });
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 
 vi.mock("../src/services/tournaments.js", () => ({
+  listTournaments: vi.fn(),
   createTournament: vi.fn(),
   registerPlayer: vi.fn(),
   removePlayer: vi.fn(),
@@ -32,7 +33,12 @@ vi.mock("../src/services/auth.js", () => ({
 }));
 
 import { createApp } from "../src/app.js";
-import { createTournament, registerPlayer, removePlayer } from "../src/services/tournaments.js";
+import {
+  listTournaments,
+  createTournament,
+  registerPlayer,
+  removePlayer,
+} from "../src/services/tournaments.js";
 import { generateNextRound } from "../src/services/tournamentRounds.js";
 import { recordScore } from "../src/services/tournamentScores.js";
 import { getStandings } from "../src/services/tournamentStandings.js";
@@ -76,6 +82,35 @@ function postTournament(body = validTournamentBody, cookie = "session=whatever")
     body: JSON.stringify(body),
   });
 }
+
+describe("GET /api/tournaments", () => {
+  it("returns 401 when not logged in", async () => {
+    readSessionUserId.mockReturnValue(null);
+
+    const res = await fetch(`${baseUrl}/api/tournaments`);
+
+    expect(res.status).toBe(401);
+    expect(listTournaments).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a non-admin", async () => {
+    getUserById.mockResolvedValue({ id: 1, role: "member" });
+
+    const res = await fetch(`${baseUrl}/api/tournaments`, { headers: { Cookie: "session=x" } });
+
+    expect(res.status).toBe(403);
+    expect(listTournaments).not.toHaveBeenCalled();
+  });
+
+  it("returns every tournament for an admin", async () => {
+    listTournaments.mockResolvedValue([{ id: 2, name: "Summer Americano" }]);
+
+    const res = await fetch(`${baseUrl}/api/tournaments`, { headers: { Cookie: "session=x" } });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual([{ id: 2, name: "Summer Americano" }]);
+  });
+});
 
 describe("POST /api/tournaments", () => {
   it("returns 401 when not logged in", async () => {
