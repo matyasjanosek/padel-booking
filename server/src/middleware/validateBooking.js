@@ -2,7 +2,7 @@ import { slotStartsForDay } from "../services/availability.js";
 import { pragueDateString } from "../timezone.js";
 
 export function validateCreateBooking(req, res, next) {
-  const { courtId, startTime } = req.body;
+  const { courtId, startTime, couponCode } = req.body;
 
   const courtIdNumber = Number(courtId);
   if (!Number.isInteger(courtIdNumber) || courtIdNumber <= 0) {
@@ -23,8 +23,14 @@ export function validateCreateBooking(req, res, next) {
     return res.status(400).json({ error: "Pick a valid time slot" });
   }
 
+  // Optional, left out entirely when no code was entered.
+  if (couponCode !== undefined && couponCode !== null && typeof couponCode !== "string") {
+    return res.status(400).json({ error: "Enter a valid coupon code" });
+  }
+
   req.body.courtId = courtIdNumber;
   req.body.startTime = startDate;
+  req.body.couponCode = couponCode ? couponCode.trim() || undefined : undefined;
   next();
 }
 

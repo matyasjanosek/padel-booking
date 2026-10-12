@@ -22,10 +22,10 @@ bookingsRouter.get("/bookings", requireAuth, async (req, res) => {
 });
 
 bookingsRouter.post("/bookings", requireAuth, validateCreateBooking, async (req, res) => {
-  const { courtId, startTime } = req.body;
+  const { courtId, startTime, couponCode } = req.body;
 
   try {
-    const booking = await createBooking({ userId: req.user.id, courtId, startTime });
+    const booking = await createBooking({ userId: req.user.id, courtId, startTime, couponCode });
     res.status(201).json(toPublicBooking(booking));
   } catch (error) {
     if (error.code === "P2002") {
@@ -33,6 +33,9 @@ bookingsRouter.post("/bookings", requireAuth, validateCreateBooking, async (req,
     }
     if (error.code === "P2003") {
       return res.status(404).json({ error: "Court not found" });
+    }
+    if (error.code === "COUPON_ERROR") {
+      return res.status(400).json({ error: error.message });
     }
     console.error(error);
     res.status(500).json({ error: "Could not create the booking" });

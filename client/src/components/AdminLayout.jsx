@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
-// Coupons and Tournaments join this list as their own admin sections are
-// built, nothing else about this layout needs to change for that.
+// Tournaments joins this list as its own admin section is built, nothing
+// else about this layout needs to change for that.
 const sections = [
   { to: "/admin/bookings", label: "Bookings" },
   { to: "/admin/courts", label: "Courts" },
   { to: "/admin/users", label: "Users" },
+  { to: "/admin/coupons", label: "Coupons" },
 ];
 
 const linkClassName = ({ isActive }) =>

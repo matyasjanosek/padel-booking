@@ -25,6 +25,9 @@ async function handlePaymentSucceeded(paymentIntent) {
     return;
   }
 
+  // A use is only counted here, once the booking is actually confirmed, not
+  // when the coupon code was applied. An abandoned or failed checkout never
+  // reaches this point, so it never burns a use.
   const [confirmedBooking] = await prisma.$transaction([
     prisma.booking.update({
       where: { id: booking.id },
@@ -35,6 +38,14 @@ async function handlePaymentSucceeded(paymentIntent) {
       where: { bookingId: booking.id },
       data: { status: "succeeded" },
     }),
+    ...(booking.couponId
+      ? [
+          prisma.coupon.update({
+            where: { id: booking.couponId },
+            data: { timesUsed: { increment: 1 } },
+          }),
+        ]
+      : []),
   ]);
 
   // The simulation is synchronous and in memory, it cannot fail the way a
