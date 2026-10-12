@@ -24,10 +24,17 @@ describe("createTournament", () => {
       format: "americano",
       pointsPerMatch: 24,
       courtCount: 2,
+      roundCount: 6,
     });
 
     expect(prisma.tournament.create).toHaveBeenCalledWith({
-      data: { name: "Summer Americano", format: "americano", pointsPerMatch: 24, courtCount: 2 },
+      data: {
+        name: "Summer Americano",
+        format: "americano",
+        pointsPerMatch: 24,
+        courtCount: 2,
+        roundCount: 6,
+      },
     });
   });
 });
