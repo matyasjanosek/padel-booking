@@ -11,11 +11,11 @@ export async function fetchMyBookings() {
   return parseJsonOrThrow(res);
 }
 
-export async function createBooking({ courtId, startTime }) {
+export async function createBooking({ courtId, startTime, couponCode }) {
   const res = await fetch("/api/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ courtId, startTime }),
+    body: JSON.stringify({ courtId, startTime, couponCode }),
   });
   return parseJsonOrThrow(res);
 }
