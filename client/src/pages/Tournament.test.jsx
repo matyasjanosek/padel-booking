@@ -122,9 +122,10 @@ describe("Tournament", () => {
     expect(await screen.findByText(/Round 2 is finished. Round 3 is next./)).toBeInTheDocument();
   });
 
-  it("shows the tournament is finished once the last round is complete", async () => {
+  it("shows the tournament is finished once its status says so", async () => {
     fetchTournamentOverview.mockResolvedValue({
       ...baseOverview,
+      tournament: { ...baseOverview.tournament, status: "finished" },
       currentRound: 6,
       isCurrentRoundComplete: true,
     });
