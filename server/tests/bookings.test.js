@@ -11,6 +11,7 @@ vi.mock("../src/db/client.js", () => ({
       findMany: vi.fn(),
     },
     court: { findUnique: vi.fn() },
+    coupon: { findUnique: vi.fn() },
     payment: { findUnique: vi.fn(), delete: vi.fn() },
   },
 }));
@@ -58,6 +59,7 @@ describe("createBooking", () => {
     expect(data.startTime).toBe(startTime);
     expect(data.endTime.toISOString()).toBe("2030-06-10T08:00:00.000Z");
     expect(data.price).toBe(400);
+    expect(data.couponId).toBeNull();
 
     // The service reads the clock at some instant between before and after,
     // so the hold lands in exactly that window shifted by the hold length.
@@ -148,6 +150,83 @@ describe("createBooking", () => {
 
     expect(prisma.booking.create).not.toHaveBeenCalled();
   });
+
+  it("applies a valid coupon code, discounting the price and storing the coupon id", async () => {
+    const now = new Date();
+    prisma.coupon.findUnique.mockResolvedValue({
+      id: 9,
+      code: "SUMMER10",
+      discountType: "percentage",
+      discountValue: 10,
+      isActive: true,
+      validFrom: new Date(now.getTime() - 1000),
+      validUntil: new Date(now.getTime() + 1000),
+      maxUses: 5,
+      timesUsed: 0,
+    });
+    prisma.booking.create.mockResolvedValue({ id: 1 });
+
+    await createBooking({
+      userId: 5,
+      courtId: 2,
+      startTime: new Date("2030-06-10T07:00:00.000Z"),
+      couponCode: "summer10",
+    });
+
+    expect(prisma.coupon.findUnique).toHaveBeenCalledWith({ where: { code: "SUMMER10" } });
+    const { data } = prisma.booking.create.mock.calls[0][0];
+    expect(data.price).toBe(360);
+    expect(data.couponId).toBe(9);
+  });
+
+  it("rejects an unknown coupon code without creating a booking", async () => {
+    prisma.coupon.findUnique.mockResolvedValue(null);
+
+    await expect(
+      createBooking({
+        userId: 5,
+        courtId: 2,
+        startTime: new Date("2030-06-10T07:00:00.000Z"),
+        couponCode: "NOPE",
+      }),
+    ).rejects.toMatchObject({ code: "COUPON_ERROR", message: "This coupon code does not exist." });
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects an expired coupon code with a clear message", async () => {
+    const past = new Date(Date.now() - 1000);
+    prisma.coupon.findUnique.mockResolvedValue({
+      id: 9,
+      code: "OLD",
+      discountType: "fixed",
+      discountValue: 50,
+      isActive: true,
+      validFrom: new Date(past.getTime() - 1000),
+      validUntil: past,
+      maxUses: 5,
+      timesUsed: 0,
+    });
+
+    await expect(
+      createBooking({
+        userId: 5,
+        courtId: 2,
+        startTime: new Date("2030-06-10T07:00:00.000Z"),
+        couponCode: "OLD",
+      }),
+    ).rejects.toMatchObject({ code: "COUPON_ERROR", message: "This coupon has expired." });
+
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+  });
+
+  it("does not look up a coupon at all when no code is given", async () => {
+    prisma.booking.create.mockResolvedValue({ id: 1 });
+
+    await createBooking({ userId: 5, courtId: 2, startTime: new Date("2030-06-10T07:00:00.000Z") });
+
+    expect(prisma.coupon.findUnique).not.toHaveBeenCalled();
+  });
 });
 
 describe("listBookingsForUser", () => {
@@ -159,6 +238,7 @@ describe("listBookingsForUser", () => {
     expect(prisma.booking.findMany).toHaveBeenCalledWith({
       where: { userId: 5 },
       orderBy: { startTime: "desc" },
+      include: { coupon: true },
     });
   });
 });
@@ -246,8 +326,24 @@ describe("toPublicBooking", () => {
       endTime: "2030-06-10T08:00:00.000+02:00",
       status: "pending",
       price: 400,
+      couponCode: null,
       holdExpiresAt: "2030-06-10T07:10:00.000+02:00",
     });
+  });
+
+  it("shows the coupon code when the booking's coupon was included in the query", () => {
+    const booking = {
+      id: 1,
+      courtId: 2,
+      startTime: new Date("2030-06-10T05:00:00.000Z"),
+      endTime: new Date("2030-06-10T06:00:00.000Z"),
+      status: "pending",
+      price: 360,
+      coupon: { code: "SUMMER10" },
+      holdExpiresAt: null,
+    };
+
+    expect(toPublicBooking(booking).couponCode).toBe("SUMMER10");
   });
 
   it("shows a null hold expiry as null", () => {
