@@ -84,7 +84,7 @@ export async function rescheduleBooking(bookingId, { courtId, startTime }) {
 // an admin can act on any booking. A confirmed booking's lighting schedule
 // is cancelled too, for the same reason a reschedule cancels the old one:
 // left in place, the lights would still come on for a booking that no
-// longer exists.
+// longer exists. gateCode is cleared for the same reason, see cancelBooking.
 export async function cancelBookingAsAdmin(bookingId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
   if (!booking) {
@@ -96,7 +96,7 @@ export async function cancelBookingAsAdmin(bookingId) {
 
   const cancelled = await prisma.booking.update({
     where: { id: bookingId },
-    data: { status: "cancelled" },
+    data: { status: "cancelled", gateCode: null },
     include: { user: true, court: true },
   });
   await releasePaymentIfPending(bookingId);

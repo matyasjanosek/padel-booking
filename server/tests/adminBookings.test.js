@@ -200,6 +200,17 @@ describe("cancelBookingAsAdmin", () => {
       startTime: existing.startTime,
     });
   });
+
+  it("clears the gate code, a cancelled booking must not carry a live one", async () => {
+    prisma.booking.findUnique.mockResolvedValue(booking({ status: "confirmed" }));
+    prisma.booking.update.mockResolvedValue(booking({ status: "cancelled" }));
+
+    await cancelBookingAsAdmin(1);
+
+    expect(prisma.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: "cancelled", gateCode: null } }),
+    );
+  });
 });
 
 describe("toAdminBooking", () => {

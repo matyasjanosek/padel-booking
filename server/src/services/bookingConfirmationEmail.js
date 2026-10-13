@@ -1,10 +1,7 @@
 import { getResend } from "../resendClient.js";
 import { PRAGUE_TIME_ZONE } from "../timezone.js";
-import {
-  GATE_CODE_VALID_BEFORE_MINUTES,
-  GATE_CODE_VALID_AFTER_MINUTES,
-  EMAIL_FROM_ADDRESS,
-} from "../config.js";
+import { EMAIL_FROM_ADDRESS } from "../config.js";
+import { gateCodeWindow } from "./gateCode.js";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: PRAGUE_TIME_ZONE,
@@ -20,14 +17,6 @@ const timeFormatter = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
   hourCycle: "h23",
 });
-
-// The gate code's window is measured from the slot's start time, not its
-// end, see config.js.
-function gateCodeWindow(startTime) {
-  const validFrom = new Date(startTime.getTime() - GATE_CODE_VALID_BEFORE_MINUTES * 60 * 1000);
-  const validUntil = new Date(startTime.getTime() + GATE_CODE_VALID_AFTER_MINUTES * 60 * 1000);
-  return { validFrom, validUntil };
-}
 
 function buildEmailText(booking) {
   const { validFrom, validUntil } = gateCodeWindow(booking.startTime);

@@ -3,6 +3,7 @@ import { SLOT_LENGTH_MINUTES, HOLD_MINUTES, PRICE_PER_SLOT_CZK } from "../config
 import { formatPragueIso } from "../timezone.js";
 import { releasePaymentIfPending } from "./payments.js";
 import { validateCoupon, applyDiscount, COUPON_ERROR_MESSAGES } from "./coupons.js";
+import { gateCodeWindow } from "./gateCode.js";
 
 const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 const HOLD_MS = HOLD_MINUTES * 60 * 1000;
@@ -115,6 +116,10 @@ export function listBookingsForUser(userId) {
 // failed the checkout before cancelling, that payment is released too, see
 // releasePaymentIfPending. Cancelling an already paid booking does not
 // touch its payment, undoing that needs an actual refund, out of scope here.
+//
+// gateCode is cleared, not just left behind: a cancelled booking must not
+// carry a code that still looks live sitting in the row, even though
+// gateAccess.js's own status check already refuses it either way.
 export async function cancelBooking(bookingId, userId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
 
@@ -130,13 +135,22 @@ export async function cancelBooking(bookingId, userId) {
 
   const cancelled = await prisma.booking.update({
     where: { id: bookingId },
-    data: { status: "cancelled" },
+    data: { status: "cancelled", gateCode: null },
   });
   await releasePaymentIfPending(bookingId);
   return { outcome: "cancelled", booking: cancelled };
 }
 
 export function toPublicBooking(booking) {
+  // Only a confirmed booking has a working code. cancelBooking never clears
+  // gateCode off a booking that was confirmed before it was cancelled, so
+  // this checks status itself rather than just booking.gateCode, or a
+  // cancelled booking would still show one.
+  const hasGateCode = booking.status === "confirmed";
+  const { validFrom, validUntil } = hasGateCode
+    ? gateCodeWindow(booking.startTime)
+    : { validFrom: null, validUntil: null };
+
   return {
     id: booking.id,
     courtId: booking.courtId,
@@ -148,6 +162,9 @@ export function toPublicBooking(booking) {
     // Only present when the booking's coupon was included in the query it
     // came from (listBookingsForUser does this, so Checkout can show it).
     couponCode: booking.coupon?.code ?? null,
+    gateCode: hasGateCode ? booking.gateCode : null,
+    gateCodeValidFrom: validFrom ? formatPragueIso(validFrom) : null,
+    gateCodeValidUntil: validUntil ? formatPragueIso(validUntil) : null,
     holdExpiresAt: booking.holdExpiresAt ? formatPragueIso(booking.holdExpiresAt) : null,
   };
 }
