@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchMyBookings, cancelBooking } from "../api/bookings.js";
 import { fetchCourts } from "../api/courts.js";
-import { formatSlot } from "../utils/formatSlot.js";
+import { formatSlot, formatTime } from "../utils/formatSlot.js";
 
 const STATUS_LABELS = {
   pending: "Pending",
@@ -13,6 +13,12 @@ const STATUS_LABELS = {
 };
 
 const CANCELLABLE_STATUSES = ["pending", "confirmed"];
+
+// Past its own validity window, not just the booking's end time, the two
+// are not the same, see config.js for why.
+function isGateCodePast(booking) {
+  return new Date() > new Date(booking.gateCodeValidUntil);
+}
 
 export default function Account() {
   const { user } = useAuth();
@@ -89,6 +95,20 @@ export default function Account() {
                 <p className="text-sm text-text-muted">
                   {STATUS_LABELS[booking.status]}, {booking.price} CZK
                 </p>
+                {booking.status === "confirmed" && booking.gateCode && (
+                  <>
+                    <p
+                      className={`text-sm ${isGateCodePast(booking) ? "text-text-muted" : "text-text"}`}
+                    >
+                      Code {booking.gateCode}, works at the gate from{" "}
+                      {formatTime(booking.gateCodeValidFrom)} until{" "}
+                      {formatTime(booking.gateCodeValidUntil)}
+                    </p>
+                    <p className="text-sm text-text-muted">
+                      Enter this code on the keypad outside. The gate always opens from the inside.
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
