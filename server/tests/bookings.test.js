@@ -286,7 +286,7 @@ describe("cancelBooking", () => {
     expect(result).toEqual({ outcome: "cancelled", booking: cancelled });
     expect(prisma.booking.update).toHaveBeenCalledWith({
       where: { id: 1 },
-      data: { status: "cancelled" },
+      data: { status: "cancelled", gateCode: null },
     });
   });
 

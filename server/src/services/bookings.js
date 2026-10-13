@@ -116,6 +116,10 @@ export function listBookingsForUser(userId) {
 // failed the checkout before cancelling, that payment is released too, see
 // releasePaymentIfPending. Cancelling an already paid booking does not
 // touch its payment, undoing that needs an actual refund, out of scope here.
+//
+// gateCode is cleared, not just left behind: a cancelled booking must not
+// carry a code that still looks live sitting in the row, even though
+// gateAccess.js's own status check already refuses it either way.
 export async function cancelBooking(bookingId, userId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
 
@@ -131,7 +135,7 @@ export async function cancelBooking(bookingId, userId) {
 
   const cancelled = await prisma.booking.update({
     where: { id: bookingId },
-    data: { status: "cancelled" },
+    data: { status: "cancelled", gateCode: null },
   });
   await releasePaymentIfPending(bookingId);
   return { outcome: "cancelled", booking: cancelled };
