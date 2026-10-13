@@ -3,6 +3,7 @@ import { SLOT_LENGTH_MINUTES, HOLD_MINUTES, PRICE_PER_SLOT_CZK } from "../config
 import { formatPragueIso } from "../timezone.js";
 import { releasePaymentIfPending } from "./payments.js";
 import { validateCoupon, applyDiscount, COUPON_ERROR_MESSAGES } from "./coupons.js";
+import { gateCodeWindow } from "./gateCode.js";
 
 const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 const HOLD_MS = HOLD_MINUTES * 60 * 1000;
@@ -137,6 +138,15 @@ export async function cancelBooking(bookingId, userId) {
 }
 
 export function toPublicBooking(booking) {
+  // Only a confirmed booking has a working code. cancelBooking never clears
+  // gateCode off a booking that was confirmed before it was cancelled, so
+  // this checks status itself rather than just booking.gateCode, or a
+  // cancelled booking would still show one.
+  const hasGateCode = booking.status === "confirmed";
+  const { validFrom, validUntil } = hasGateCode
+    ? gateCodeWindow(booking.startTime)
+    : { validFrom: null, validUntil: null };
+
   return {
     id: booking.id,
     courtId: booking.courtId,
@@ -148,6 +158,9 @@ export function toPublicBooking(booking) {
     // Only present when the booking's coupon was included in the query it
     // came from (listBookingsForUser does this, so Checkout can show it).
     couponCode: booking.coupon?.code ?? null,
+    gateCode: hasGateCode ? booking.gateCode : null,
+    gateCodeValidFrom: validFrom ? formatPragueIso(validFrom) : null,
+    gateCodeValidUntil: validUntil ? formatPragueIso(validUntil) : null,
     holdExpiresAt: booking.holdExpiresAt ? formatPragueIso(booking.holdExpiresAt) : null,
   };
 }
