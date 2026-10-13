@@ -1,13 +1,15 @@
 import { prisma } from "../db/client.js";
-import { GATE_CODE_VALID_BEFORE_MINUTES, GATE_CODE_VALID_AFTER_MINUTES } from "../config.js";
+import { gateCodeWindow } from "./gateCode.js";
 import { openGate } from "../hardware/index.js";
 
-const BEFORE_MS = GATE_CODE_VALID_BEFORE_MINUTES * 60 * 1000;
-const AFTER_MS = GATE_CODE_VALID_AFTER_MINUTES * 60 * 1000;
-
-function isWithinGateWindow(startTime, now) {
-  const validFrom = new Date(startTime.getTime() - BEFORE_MS);
-  const validUntil = new Date(startTime.getTime() + AFTER_MS);
+// Checked here, not only in the query below, so this still holds even if
+// that query's own status filter is ever changed: a booking that is not
+// confirmed right now never grants access, whatever its code or window.
+function isUsable(booking, now) {
+  if (booking.status !== "confirmed") {
+    return false;
+  }
+  const { validFrom, validUntil } = gateCodeWindow(booking.startTime);
   return now >= validFrom && now <= validUntil;
 }
 
@@ -24,7 +26,7 @@ export async function validateGateCode(code) {
   });
 
   const now = new Date();
-  const match = bookings.find((booking) => isWithinGateWindow(booking.startTime, now));
+  const match = bookings.find((booking) => isUsable(booking, now));
   if (!match) {
     return { granted: false };
   }

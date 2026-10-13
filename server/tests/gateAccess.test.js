@@ -44,6 +44,16 @@ describe("validateGateCode", () => {
     expect(openGate).toHaveBeenCalledWith({ bookingId: 1 });
   });
 
+  it("only ever queries for a confirmed booking with this code", async () => {
+    prisma.booking.findMany.mockResolvedValue([]);
+
+    await validateGateCode("123456");
+
+    expect(prisma.booking.findMany).toHaveBeenCalledWith({
+      where: { gateCode: "123456", status: "confirmed" },
+    });
+  });
+
   it("denies a code that matches no confirmed booking", async () => {
     prisma.booking.findMany.mockResolvedValue([]);
 
@@ -51,6 +61,34 @@ describe("validateGateCode", () => {
 
     expect(result).toEqual({ granted: false });
     expect(openGate).not.toHaveBeenCalled();
+  });
+
+  it("denies a cancelled booking's code even if it somehow still had one and was within its window", async () => {
+    // The query above already excludes a cancelled booking, this is the
+    // service's own second check, in case that query is ever loosened: a
+    // cancelled booking's own confirmed-looking row must still be refused.
+    prisma.booking.findMany.mockResolvedValue([confirmedBooking({ status: "cancelled" })]);
+
+    const result = await validateGateCode("123456");
+
+    expect(result).toEqual({ granted: false });
+    expect(openGate).not.toHaveBeenCalled();
+  });
+
+  it("gives an unknown code and a cancelled booking's code the exact same response", async () => {
+    prisma.booking.findMany.mockResolvedValue([]);
+    const unknown = await validateGateCode("999999");
+
+    prisma.booking.findMany.mockResolvedValue([confirmedBooking({ status: "cancelled" })]);
+    const cancelled = await validateGateCode("123456");
+
+    vi.setSystemTime(new Date("2030-06-10T08:39:00.000Z")); // one minute before the window
+    prisma.booking.findMany.mockResolvedValue([confirmedBooking()]);
+    const outsideWindow = await validateGateCode("123456");
+
+    expect(unknown).toEqual({ granted: false });
+    expect(cancelled).toEqual(unknown);
+    expect(outsideWindow).toEqual(unknown);
   });
 
   it.each([
