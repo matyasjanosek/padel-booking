@@ -327,6 +327,9 @@ describe("toPublicBooking", () => {
       status: "pending",
       price: 400,
       couponCode: null,
+      gateCode: null,
+      gateCodeValidFrom: null,
+      gateCodeValidUntil: null,
       holdExpiresAt: "2030-06-10T07:10:00.000+02:00",
     });
   });
@@ -345,6 +348,49 @@ describe("toPublicBooking", () => {
 
     expect(toPublicBooking(booking).couponCode).toBe("SUMMER10");
   });
+
+  it("shows the gate code and its validity window for a confirmed booking", () => {
+    const booking = {
+      id: 1,
+      courtId: 2,
+      // 16:00Z is 18:00 Prague summer time.
+      startTime: new Date("2030-06-10T16:00:00.000Z"),
+      endTime: new Date("2030-06-10T17:00:00.000Z"),
+      status: "confirmed",
+      price: 400,
+      gateCode: "123456",
+      holdExpiresAt: null,
+    };
+
+    const result = toPublicBooking(booking);
+    expect(result.gateCode).toBe("123456");
+    // 20 minutes before 18:00, 45 minutes after 18:00.
+    expect(result.gateCodeValidFrom).toBe("2030-06-10T17:40:00.000+02:00");
+    expect(result.gateCodeValidUntil).toBe("2030-06-10T18:45:00.000+02:00");
+  });
+
+  it.each(["pending", "cancelled", "expired"])(
+    "never shows the gate code or its window for a %s booking",
+    (status) => {
+      const booking = {
+        id: 1,
+        courtId: 2,
+        startTime: new Date("2030-06-10T16:00:00.000Z"),
+        endTime: new Date("2030-06-10T17:00:00.000Z"),
+        status,
+        price: 400,
+        // Set as if the booking had been confirmed and then cancelled,
+        // the exact case toPublicBooking has to guard against.
+        gateCode: "123456",
+        holdExpiresAt: null,
+      };
+
+      const result = toPublicBooking(booking);
+      expect(result.gateCode).toBeNull();
+      expect(result.gateCodeValidFrom).toBeNull();
+      expect(result.gateCodeValidUntil).toBeNull();
+    },
+  );
 
   it("shows a null hold expiry as null", () => {
     const booking = {
