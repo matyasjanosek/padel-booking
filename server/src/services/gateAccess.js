@@ -1,13 +1,9 @@
 import { prisma } from "../db/client.js";
-import { GATE_CODE_VALID_BEFORE_MINUTES, GATE_CODE_VALID_AFTER_MINUTES } from "../config.js";
+import { gateCodeWindow } from "./gateCode.js";
 import { openGate } from "../hardware/index.js";
 
-const BEFORE_MS = GATE_CODE_VALID_BEFORE_MINUTES * 60 * 1000;
-const AFTER_MS = GATE_CODE_VALID_AFTER_MINUTES * 60 * 1000;
-
 function isWithinGateWindow(startTime, now) {
-  const validFrom = new Date(startTime.getTime() - BEFORE_MS);
-  const validUntil = new Date(startTime.getTime() + AFTER_MS);
+  const { validFrom, validUntil } = gateCodeWindow(startTime);
   return now >= validFrom && now <= validUntil;
 }
 
