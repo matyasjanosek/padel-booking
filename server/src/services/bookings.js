@@ -1,44 +1,31 @@
 import { prisma } from "../db/client.js";
-import { SLOT_LENGTH_MINUTES, HOLD_MINUTES, PRICE_PER_SLOT_CZK } from "../config.js";
+import { HOLD_MINUTES, PRICE_PER_HOUR_CZK } from "../config.js";
 import { formatPragueIso } from "../timezone.js";
 import { releasePaymentIfPending } from "./payments.js";
 import { validateCoupon, applyDiscount, COUPON_ERROR_MESSAGES } from "./coupons.js";
 import { gateCodeWindow } from "./gateCode.js";
+import { courtSlotRowsFor } from "./courtSlots.js";
 import { cancelLighting } from "../hardware/index.js";
 
-const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 const HOLD_MS = HOLD_MINUTES * 60 * 1000;
 
-// A slot that was booked before and is now stale, its hold expired or it
-// was cancelled, still has a row at that (court_id, start_time). MySQL's
-// unique index does not care about status, so inserting there always
-// raises P2002 even though the slot is free again. This is the condition
-// under which an existing row may be taken over instead of left blocking
-// the slot forever. A function, not a constant, so "now" is read fresh on
-// every call rather than once when the module loads.
-function reclaimableConditions() {
-  return [
-    { status: "cancelled" },
-    { status: "expired" },
-    { status: "pending", holdExpiresAt: { lt: new Date() } },
-  ];
+// UNIT_LENGTH_MINUTES is always half an hour, so durationMinutes / 60 is
+// always a multiple of 0.5, and this is always exact: no rounding needed the
+// way applyDiscount needs it for a percentage coupon.
+function priceForDuration(durationMinutes) {
+  return (durationMinutes / 60) * PRICE_PER_HOUR_CZK;
 }
 
-// Creates a pending booking with a hold a few minutes ahead. For a slot
-// nobody has booked before, the (court_id, start_time) unique constraint is
-// the guarantee against double booking, as the plan intends: this just
-// inserts and lets a P2002 from a genuine race propagate, the route turns
-// it into a 409.
-//
-// For a slot that already has a stale row, the insert's P2002 is instead
-// handled here: the existing row is reclaimed in place with an update
-// guarded by RECLAIMABLE, so it only matches if the row is still actually
-// stale at the moment the update runs. Its affected row count is the race
-// guarantee for this path, the same role the unique constraint plays for a
-// brand new slot. If it affects no rows, the slot is genuinely taken, or
-// someone else's request reclaimed it a moment earlier, and the original
-// P2002 propagates instead.
-export async function createBooking({ userId, courtId, startTime, couponCode }) {
+// Creates a pending booking with a hold a few minutes ahead, for a chosen
+// start and duration. The court_slots table is the only thing enforcing no
+// overlap: the booking row and one court_slots row per 30 minute unit it
+// covers are inserted together in one transaction, so a conflict with any
+// existing booking, whatever its own start time, fails the insert and rolls
+// both back. There is nothing to reclaim here any more: a cancelled or
+// expired booking's own units are deleted as it happens (see cancelBooking,
+// cancelBookingAsAdmin and expireStaleHolds), so a freed slot is simply
+// free, not a stale row waiting to be taken over.
+export async function createBooking({ userId, courtId, startTime, durationMinutes, couponCode }) {
   // An inactive court is not bookable, the same as if it did not exist.
   // There is no foreign key for "and the court must be active", so this
   // needs its own check; thrown with a P2003 code so the existing "court
@@ -52,7 +39,7 @@ export async function createBooking({ userId, courtId, startTime, couponCode }) 
   // Applying the code only checks it is currently usable, it does not count
   // as a use yet, see handlePaymentSucceeded in stripeWebhook.js for that.
   // A bad code is rejected here, before any booking row exists.
-  let price = PRICE_PER_SLOT_CZK;
+  let price = priceForDuration(durationMinutes);
   let couponId = null;
   if (couponCode) {
     const result = await validateCoupon(couponCode);
@@ -65,7 +52,7 @@ export async function createBooking({ userId, courtId, startTime, couponCode }) 
     couponId = result.coupon.id;
   }
 
-  const endTime = new Date(startTime.getTime() + SLOT_LENGTH_MS);
+  const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
   const data = {
     userId,
     courtId,
@@ -77,24 +64,11 @@ export async function createBooking({ userId, courtId, startTime, couponCode }) 
     holdExpiresAt: new Date(Date.now() + HOLD_MS),
   };
 
-  try {
-    return await prisma.booking.create({ data });
-  } catch (error) {
-    if (error.code !== "P2002") {
-      throw error;
-    }
-
-    const reclaimed = await prisma.booking.updateMany({
-      where: { courtId, startTime, OR: reclaimableConditions() },
-      data,
-    });
-    if (reclaimed.count === 0) {
-      throw error;
-    }
-    return prisma.booking.findUniqueOrThrow({
-      where: { courtId_startTime: { courtId, startTime } },
-    });
-  }
+  return prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.create({ data });
+    await tx.courtSlot.createMany({ data: courtSlotRowsFor(booking) });
+    return booking;
+  });
 }
 
 export function listBookingsForUser(userId) {
@@ -111,12 +85,15 @@ export function listBookingsForUser(userId) {
 // can turn it into the right status code, there is no single good sentinel
 // value to tell apart "not found", "not yours" and "already settled".
 //
-// A cancelled booking is one of the conditions createBooking's reclaim
-// logic already treats as stale, so the slot becomes bookable again as soon
-// as this runs. If a payment for it is still pending, nobody completed or
-// failed the checkout before cancelling, that payment is released too, see
-// releasePaymentIfPending. Cancelling an already paid booking does not
-// touch its payment, undoing that needs an actual refund, out of scope here.
+// Its court_slots rows are deleted in the same transaction as the status
+// change, so the slot is free again, for anyone, the instant this commits:
+// there is no freed-but-not-yet-freed moment another request could land in.
+// If a payment for it is still pending, nobody completed or failed the
+// checkout before cancelling, that payment is released too, see
+// releasePaymentIfPending; this runs after the transaction, a call to
+// Stripe cannot be part of a database transaction. Cancelling an already
+// paid booking does not touch its payment, undoing that needs an actual
+// refund, out of scope here.
 //
 // gateCode is cleared, not just left behind: a cancelled booking must not
 // carry a code that still looks live sitting in the row, even though
@@ -137,9 +114,13 @@ export async function cancelBooking(bookingId, userId) {
     return { outcome: "not_cancellable" };
   }
 
-  const cancelled = await prisma.booking.update({
-    where: { id: bookingId },
-    data: { status: "cancelled", gateCode: null },
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const updated = await tx.booking.update({
+      where: { id: bookingId },
+      data: { status: "cancelled", gateCode: null },
+    });
+    await tx.courtSlot.deleteMany({ where: { bookingId } });
+    return updated;
   });
   await releasePaymentIfPending(bookingId);
   if (booking.status === "confirmed") {

@@ -71,7 +71,7 @@ describe("POST /api/bookings", () => {
   it("creates the booking for the logged in user", async () => {
     createBooking.mockResolvedValue({ id: 42 });
 
-    const res = await postBooking({ courtId: 1, startTime: VALID_START });
+    const res = await postBooking({ courtId: 1, startTime: VALID_START, durationMinutes: 90 });
 
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ id: 42, status: "pending" });
@@ -79,6 +79,7 @@ describe("POST /api/bookings", () => {
       userId: 1,
       courtId: 1,
       startTime: new Date(VALID_START),
+      durationMinutes: 90,
       couponCode: undefined,
     });
   });
@@ -86,12 +87,18 @@ describe("POST /api/bookings", () => {
   it("passes a trimmed coupon code through to the service", async () => {
     createBooking.mockResolvedValue({ id: 42 });
 
-    await postBooking({ courtId: 1, startTime: VALID_START, couponCode: "  summer10  " });
+    await postBooking({
+      courtId: 1,
+      startTime: VALID_START,
+      durationMinutes: 60,
+      couponCode: "  summer10  ",
+    });
 
     expect(createBooking).toHaveBeenCalledWith({
       userId: 1,
       courtId: 1,
       startTime: new Date(VALID_START),
+      durationMinutes: 60,
       couponCode: "summer10",
     });
   });
@@ -103,12 +110,13 @@ describe("POST /api/bookings", () => {
     expect(createBooking).not.toHaveBeenCalled();
   });
 
-  it("returns 409 when the slot was just taken", async () => {
-    createBooking.mockRejectedValue(
-      Object.assign(new Error("Unique constraint failed"), { code: "P2002" }),
-    );
+  it.each([
+    ["P2002", "Unique constraint failed"],
+    ["P2034", "Transaction failed due to a write conflict or a deadlock"],
+  ])("returns 409 when the slot was just taken, for a %s conflict", async (code, message) => {
+    createBooking.mockRejectedValue(Object.assign(new Error(message), { code }));
 
-    const res = await postBooking({ courtId: 1, startTime: VALID_START });
+    const res = await postBooking({ courtId: 1, startTime: VALID_START, durationMinutes: 60 });
 
     expect(res.status).toBe(409);
     expect((await res.json()).error).toMatch(/just taken/i);
@@ -119,7 +127,7 @@ describe("POST /api/bookings", () => {
       Object.assign(new Error("Foreign key constraint failed"), { code: "P2003" }),
     );
 
-    const res = await postBooking({ courtId: 999, startTime: VALID_START });
+    const res = await postBooking({ courtId: 999, startTime: VALID_START, durationMinutes: 60 });
 
     expect(res.status).toBe(404);
   });
@@ -129,10 +137,22 @@ describe("POST /api/bookings", () => {
       Object.assign(new Error("This coupon has expired."), { code: "COUPON_ERROR" }),
     );
 
-    const res = await postBooking({ courtId: 1, startTime: VALID_START, couponCode: "OLD" });
+    const res = await postBooking({
+      courtId: 1,
+      startTime: VALID_START,
+      durationMinutes: 60,
+      couponCode: "OLD",
+    });
 
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe("This coupon has expired.");
+  });
+
+  it("rejects a missing duration without calling the service", async () => {
+    const res = await postBooking({ courtId: 1, startTime: VALID_START });
+
+    expect(res.status).toBe(400);
+    expect(createBooking).not.toHaveBeenCalled();
   });
 });
 
