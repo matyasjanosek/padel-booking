@@ -1,7 +1,8 @@
 import { prisma } from "../db/client.js";
 import {
   UNIT_LENGTH_MINUTES,
-  OPENING_HOUR,
+  OPENING_HOUR_WEEKDAY,
+  OPENING_HOUR_WEEKEND,
   CLOSING_HOUR_WEEKDAY,
   CLOSING_HOUR_WEEKEND,
 } from "../config.js";
@@ -10,15 +11,23 @@ import { expireStaleHolds } from "./holdExpiry.js";
 
 const UNIT_LENGTH_MS = UNIT_LENGTH_MINUTES * 60 * 1000;
 
-// The closing hour for a calendar date, later on a weekday than at the
-// weekend. date is "YYYY-MM-DD"; its day of the week is a property of the
-// calendar date itself, not of any timezone, so this needs no Prague
-// conversion the way the actual opening and closing instants below do.
-function closingHourForDate(date) {
+// date is "YYYY-MM-DD"; its day of the week is a property of the calendar
+// date itself, not of any timezone, so this needs no Prague conversion the
+// way the actual opening and closing instants below do.
+function isWeekend(date) {
   const [year, month, day] = date.split("-").map(Number);
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-  const isWeekend = weekday === 0 || weekday === 6;
-  return isWeekend ? CLOSING_HOUR_WEEKEND : CLOSING_HOUR_WEEKDAY;
+  return weekday === 0 || weekday === 6;
+}
+
+// The opening and closing hour for a calendar date: later opening, earlier
+// closing, at the weekend than on a weekday.
+function openingHourForDate(date) {
+  return isWeekend(date) ? OPENING_HOUR_WEEKEND : OPENING_HOUR_WEEKDAY;
+}
+
+function closingHourForDate(date) {
+  return isWeekend(date) ? CLOSING_HOUR_WEEKEND : CLOSING_HOUR_WEEKDAY;
 }
 
 // The closing instant, as a UTC Date, for whichever Prague calendar date a
@@ -38,7 +47,7 @@ export function closingInstantFor(instant) {
 // boundary.
 export function slotStartsForDay(date) {
   const [year, month, day] = date.split("-").map(Number);
-  const dayStart = pragueTimeToUtc(year, month, day, OPENING_HOUR, 0).getTime();
+  const dayStart = pragueTimeToUtc(year, month, day, openingHourForDate(date), 0).getTime();
   const dayEnd = pragueTimeToUtc(year, month, day, closingHourForDate(date), 0).getTime();
 
   const starts = [];

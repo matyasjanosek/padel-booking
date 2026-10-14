@@ -1,7 +1,9 @@
 // Bookable window, the same for every court. Hours are Europe/Prague wall
-// clock time, see src/timezone.js. Closing time depends on the day: the
-// centre closes later on a weekday than at the weekend.
-export const OPENING_HOUR = 7;
+// clock time, see src/timezone.js. Both the opening and the closing hour
+// depend on the day: the centre opens later and closes earlier at the
+// weekend than on a weekday.
+export const OPENING_HOUR_WEEKDAY = 7;
+export const OPENING_HOUR_WEEKEND = 8;
 export const CLOSING_HOUR_WEEKDAY = 22;
 export const CLOSING_HOUR_WEEKEND = 20;
 

@@ -40,35 +40,47 @@ describe("slotStartsForDay", () => {
     expect(new Date(starts.at(-1)).toISOString()).toBe("2026-11-02T20:30:00.000Z");
   });
 
-  it("returns 26 units at the weekend, 07:00 to 20:00, closing two hours earlier than a weekday", () => {
+  it("returns 24 units at the weekend, 08:00 to 20:00, opening later and closing earlier than a weekday", () => {
     // 2026-09-20 is a Sunday, Prague summer time, CEST (UTC+2).
     const starts = slotStartsForDay("2026-09-20");
 
-    expect(starts).toHaveLength(26);
-    expect(new Date(starts[0]).toISOString()).toBe("2026-09-20T05:00:00.000Z");
+    expect(starts).toHaveLength(24);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-09-20T06:00:00.000Z");
     expect(new Date(starts.at(-1)).toISOString()).toBe("2026-09-20T17:30:00.000Z");
   });
 
-  it("still produces 26 weekend units across the day clocks spring forward", () => {
+  it("still produces 24 weekend units across the day clocks spring forward", () => {
     // 2026-03-29: clocks jump from 02:00 CET to 03:00 CEST at 01:00 UTC,
-    // well before the 07:00 opening, so the whole day uses CEST (UTC+2).
-    // Also a Sunday, so the weekend closing hour applies too.
+    // well before the 08:00 weekend opening, so the whole day uses CEST
+    // (UTC+2). Also a Sunday, so the weekend hours apply too.
     const starts = slotStartsForDay("2026-03-29");
 
-    expect(starts).toHaveLength(26);
-    expect(new Date(starts[0]).toISOString()).toBe("2026-03-29T05:00:00.000Z");
+    expect(starts).toHaveLength(24);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-03-29T06:00:00.000Z");
     expect(new Date(starts.at(-1)).toISOString()).toBe("2026-03-29T17:30:00.000Z");
   });
 
-  it("still produces 26 weekend units across the day clocks fall back", () => {
+  it("still produces 24 weekend units across the day clocks fall back", () => {
     // 2026-10-25: clocks jump from 03:00 CEST back to 02:00 CET at 01:00
-    // UTC, well before the 07:00 opening, so the whole day uses CET
-    // (UTC+1). Also a Sunday.
+    // UTC, well before the 08:00 weekend opening, so the whole day uses
+    // CET (UTC+1). Also a Sunday.
     const starts = slotStartsForDay("2026-10-25");
 
-    expect(starts).toHaveLength(26);
-    expect(new Date(starts[0]).toISOString()).toBe("2026-10-25T06:00:00.000Z");
+    expect(starts).toHaveLength(24);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-10-25T07:00:00.000Z");
     expect(new Date(starts.at(-1)).toISOString()).toBe("2026-10-25T18:30:00.000Z");
+  });
+
+  it("opens at 7:00 Prague time on a weekday", () => {
+    const starts = slotStartsForDay("2026-11-02");
+
+    expect(new Date(starts[0]).toISOString()).toBe("2026-11-02T06:00:00.000Z"); // 07:00 CET
+  });
+
+  it("opens an hour later, at 8:00 Prague time, at the weekend", () => {
+    const starts = slotStartsForDay("2026-09-20");
+
+    expect(new Date(starts[0]).toISOString()).toBe("2026-09-20T06:00:00.000Z"); // 08:00 CEST
   });
 });
 
@@ -146,6 +158,13 @@ describe("getAvailability", () => {
     expect(unitBefore.maxUnits).toBe(1);
   });
 
+  it("returns 8:00 as the first start at the weekend, an hour later than a weekday", async () => {
+    // 2026-09-20 is a Sunday, Prague summer time, CEST (UTC+2).
+    const slots = await getAvailability(1, "2026-09-20");
+
+    expect(slots[0].startTime).toBe("2026-09-20T08:00:00.000+02:00");
+  });
+
   it("asks court_slots only for this court within that day's opening hours, as UTC instants", async () => {
     await getAvailability(1, "2026-09-20");
 
@@ -153,7 +172,7 @@ describe("getAvailability", () => {
       where: {
         courtId: 1,
         slotStart: {
-          gte: new Date("2026-09-20T05:00:00.000Z"),
+          gte: new Date("2026-09-20T06:00:00.000Z"),
           lt: new Date("2026-09-20T18:00:00.000Z"),
         },
       },
