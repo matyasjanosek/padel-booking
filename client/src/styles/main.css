@@ -74,6 +74,17 @@
     @apply px-4 py-1.5 text-sm;
   }
 
+  /* A price treated like a scoreboard number, not a sentence: the display
+     face, bold, tight line height, digits that line up. Size is set by
+     whatever uses it, a standalone price (Info) and one inside a tight
+     panel (Booking) need different sizes, not a different treatment. */
+  .numeral {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* A line set like it is bolted to the fence, not typed: an inset shadow
      standing in for a panel recessed into the surface, and a shadow on
      each side of the letters standing in for a line pressed into metal. */
