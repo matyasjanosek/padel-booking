@@ -187,6 +187,9 @@ describe("Account", () => {
       await screen.findByText("Code 482913, works at the gate from 17:40 until 18:45"),
     ).toBeInTheDocument();
     expect(screen.getByText(/enter this code on the keypad outside/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("You can also find this code in your confirmation email."),
+    ).toBeInTheDocument();
   });
 
   it("never shows a gate code for a pending or a cancelled booking", async () => {
@@ -196,6 +199,7 @@ describe("Account", () => {
     await screen.findByText("Pending, 400 CZK");
     expect(screen.queryByText(/^Code /)).not.toBeInTheDocument();
     expect(screen.queryByText(/keypad outside/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/confirmation email/i)).not.toBeInTheDocument();
   });
 
   it("keeps an upcoming gate code's window in full colour", async () => {
