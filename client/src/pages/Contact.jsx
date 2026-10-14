@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { sendContactMessage } from "../api/contact.js";
+import { ADDRESS_LINES, CONTACT_EMAIL } from "../constants/business.js";
 
 export default function Contact() {
   const [name, setName] = useState("");
@@ -101,14 +102,17 @@ export default function Contact() {
           <div>
             <h2 className="mb-3 text-2xl">Find us</h2>
             <p className="text-text-muted">
-              Sportovní 12
-              <br />
-              756 61 Rožnov pod Radhoštěm
+              {ADDRESS_LINES.map((line) => (
+                <span key={line}>
+                  {line}
+                  <br />
+                </span>
+              ))}
             </p>
             <p className="mt-4 text-text-muted">
               Email:{" "}
-              <a href="mailto:info@genpadel.cz" className="text-text hover:text-accent">
-                info@genpadel.cz
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-text hover:text-accent">
+                {CONTACT_EMAIL}
               </a>
             </p>
             <p className="mt-4 text-text-muted">

@@ -1,4 +1,5 @@
 import racketsPhoto from "../assets/photos/rackets-and-balls.jpg";
+import { ADDRESS_LINES, OPENING_HOURS } from "../constants/business.js";
 
 // A schematic, not a map: the two courts, the fence around them, the gate
 // members let themselves in through, and where to park. Real proportions,
@@ -112,14 +113,12 @@ export default function Info() {
             <div>
               <h2 className="mb-3 text-2xl">Opening hours</h2>
               <dl className="divide-y divide-border">
-                <div className="flex items-baseline justify-between py-2">
-                  <dt className="text-text-muted">Monday&ndash;Friday</dt>
-                  <dd className="font-medium tabular-nums text-text">7:00&ndash;22:00</dd>
-                </div>
-                <div className="flex items-baseline justify-between py-2">
-                  <dt className="text-text-muted">Saturday&ndash;Sunday</dt>
-                  <dd className="font-medium tabular-nums text-text">8:00&ndash;20:00</dd>
-                </div>
+                {OPENING_HOURS.map(({ label, hours }) => (
+                  <div key={label} className="flex items-baseline justify-between py-2">
+                    <dt className="text-text-muted">{label}</dt>
+                    <dd className="font-medium tabular-nums text-text">{hours}</dd>
+                  </div>
+                ))}
               </dl>
             </div>
 
@@ -151,8 +150,8 @@ export default function Info() {
           <div>
             <h2 className="mb-3 text-2xl">How to find us</h2>
             <p className="max-w-[60ch] text-text-muted">
-              GEN PADEL Rožnov is at Sportovní 12, Rožnov pod Radhoštěm. The courts are outdoor, a
-              short walk from the town centre. Free parking is next to the courts.
+              GEN PADEL Rožnov is at {ADDRESS_LINES.join(", ")}. The courts are outdoor, a short
+              walk from the town centre. Free parking is next to the courts.
             </p>
           </div>
         </div>
