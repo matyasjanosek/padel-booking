@@ -140,7 +140,9 @@ export default function Booking() {
   const selectedPrice = durationMinutes ? (durationMinutes / 60) * pricePerHour : null;
 
   return (
-    <section className="px-5 py-12 md:max-w-page md:pl-24 md:pr-10 md:py-16">
+    <section
+      className={`px-5 py-12 md:max-w-page md:pl-24 md:pr-10 md:py-16 ${selectedSlot ? "pb-64 md:pb-16" : ""}`}
+    >
       <h1 className="mb-4 text-4xl tracking-tight md:text-5xl">Booking</h1>
       <p className="max-w-[60ch] text-text-muted">
         Pick a day and a free slot on either court.
@@ -152,7 +154,7 @@ export default function Booking() {
           type="button"
           onClick={() => changeDate(addDays(date, -1))}
           disabled={date === today}
-          className="rounded-full border border-border px-4 py-2 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-40"
+          className="btn-secondary btn-sm"
         >
           ‹ Previous day
         </button>
@@ -166,7 +168,7 @@ export default function Booking() {
         <button
           type="button"
           onClick={() => changeDate(addDays(date, 1))}
-          className="rounded-full border border-border px-4 py-2 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+          className="btn-secondary btn-sm"
         >
           Next day ›
         </button>
@@ -191,6 +193,7 @@ export default function Booking() {
                 courtId={court.id}
                 courtName={court.name}
                 slots={availability[court.id]?.slots ?? []}
+                unitMinutes={unitMinutes}
                 selectedStartTime={
                   selectedSlot?.courtId === court.id ? selectedSlot.startTime : null
                 }
@@ -201,8 +204,14 @@ export default function Booking() {
         </div>
       )}
 
+      {/* Pinned once a slot is chosen, so the slot and the price stay
+          visible however far the grid is scrolled: a full width bar
+          anchored to the bottom of the screen on mobile, a floating card
+          in the corner on desktop. Both are position: fixed, not sticky,
+          the stronger guarantee that it never scrolls out of view at all,
+          rather than only after some scroll point. */}
       {selectedSlot && (
-        <div className="mt-8 max-w-sm rounded-lg border border-accent/60 bg-surface p-5">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-accent/60 bg-surface p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.4)] sm:px-8 md:inset-x-auto md:bottom-8 md:right-10 md:w-80 md:rounded-lg md:border md:p-5 md:shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
           <p className="font-medium text-text">
             {courtName(selectedSlot.courtId)}, {formatTime(selectedSlot.startTime)}
           </p>
@@ -213,30 +222,34 @@ export default function Booking() {
             </p>
           ) : (
             <>
-              <div className="mt-3 flex flex-col gap-1.5">
-                <label className="text-sm font-medium" htmlFor="duration">
-                  Duration
-                </label>
-                <select
-                  id="duration"
-                  value={durationMinutes ?? ""}
-                  onChange={(event) => setDurationMinutes(Number(event.target.value))}
-                  disabled={booking}
-                  className="rounded-lg border border-border bg-bg px-3 py-2 text-text disabled:opacity-50"
-                >
-                  {options.map((minutes) => (
-                    <option key={minutes} value={minutes}>
-                      {formatDuration(minutes)}
-                    </option>
-                  ))}
-                </select>
+              <div className="mt-3 flex flex-wrap items-end gap-3 md:flex-col md:items-stretch md:gap-1.5">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium" htmlFor="duration">
+                    Duration
+                  </label>
+                  <select
+                    id="duration"
+                    value={durationMinutes ?? ""}
+                    onChange={(event) => setDurationMinutes(Number(event.target.value))}
+                    disabled={booking}
+                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text disabled:opacity-50"
+                  >
+                    {options.map((minutes) => (
+                      <option key={minutes} value={minutes}>
+                        {formatDuration(minutes)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="numeral text-2xl text-accent md:mt-1">
+                  {selectedPrice} <span className="text-sm text-text-muted">CZK</span>
+                </p>
               </div>
               {selectedEndTime && (
-                <p className="mt-2 text-text-muted">
+                <p className="mt-2 text-sm text-text-muted">
                   {formatSlot(selectedSlot.startTime, selectedEndTime)}
                 </p>
               )}
-              <p className="mt-1 text-text-muted">{selectedPrice} CZK</p>
               <div className="mt-3 flex flex-col gap-1.5">
                 <label className="text-sm font-medium" htmlFor="coupon-code">
                   Coupon code (optional)
@@ -258,7 +271,7 @@ export default function Booking() {
               type="button"
               onClick={handleConfirmBooking}
               disabled={booking || !durationMinutes}
-              className="rounded-full border border-accent bg-accent px-6 py-2.5 font-medium text-bg transition-opacity duration-200 disabled:opacity-50"
+              className="btn-primary"
             >
               {booking ? "Booking..." : "Confirm booking"}
             </button>
@@ -270,7 +283,7 @@ export default function Booking() {
                 setCouponCode("");
               }}
               disabled={booking}
-              className="rounded-full border border-border px-6 py-2.5 font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
+              className="btn-secondary"
             >
               Cancel
             </button>
