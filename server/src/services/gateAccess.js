@@ -9,7 +9,7 @@ function isUsable(booking, now) {
   if (booking.status !== "confirmed") {
     return false;
   }
-  const { validFrom, validUntil } = gateCodeWindow(booking.startTime);
+  const { validFrom, validUntil } = gateCodeWindow(booking.startTime, booking.endTime);
   return now >= validFrom && now <= validUntil;
 }
 
