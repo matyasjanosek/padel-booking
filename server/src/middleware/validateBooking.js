@@ -1,8 +1,17 @@
-import { slotStartsForDay } from "../services/availability.js";
+import { UNIT_LENGTH_MINUTES, MIN_BOOKING_MINUTES } from "../config.js";
+import { slotStartsForDay, closingInstantFor } from "../services/availability.js";
 import { pragueDateString } from "../timezone.js";
 
+function isValidDuration(minutes) {
+  return (
+    Number.isInteger(minutes) &&
+    minutes >= MIN_BOOKING_MINUTES &&
+    minutes % UNIT_LENGTH_MINUTES === 0
+  );
+}
+
 export function validateCreateBooking(req, res, next) {
-  const { courtId, startTime, couponCode } = req.body;
+  const { courtId, startTime, durationMinutes, couponCode } = req.body;
 
   const courtIdNumber = Number(courtId);
   if (!Number.isInteger(courtIdNumber) || courtIdNumber <= 0) {
@@ -23,6 +32,16 @@ export function validateCreateBooking(req, res, next) {
     return res.status(400).json({ error: "Pick a valid time slot" });
   }
 
+  const durationNumber = Number(durationMinutes);
+  if (!isValidDuration(durationNumber)) {
+    return res.status(400).json({ error: "Pick a valid booking length" });
+  }
+
+  const endTime = new Date(startDate.getTime() + durationNumber * 60 * 1000);
+  if (endTime.getTime() > closingInstantFor(startDate).getTime()) {
+    return res.status(400).json({ error: "This booking would run past closing time" });
+  }
+
   // Optional, left out entirely when no code was entered.
   if (couponCode !== undefined && couponCode !== null && typeof couponCode !== "string") {
     return res.status(400).json({ error: "Enter a valid coupon code" });
@@ -30,6 +49,7 @@ export function validateCreateBooking(req, res, next) {
 
   req.body.courtId = courtIdNumber;
   req.body.startTime = startDate;
+  req.body.durationMinutes = durationNumber;
   req.body.couponCode = couponCode ? couponCode.trim() || undefined : undefined;
   next();
 }

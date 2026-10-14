@@ -26,3 +26,12 @@ export function formatSlot(startTime, endTime) {
 export function formatTime(time) {
   return timeFormatter.format(new Date(time));
 }
+
+// 60 as "1h", 90 as "1h30", 120 as "2h", and so on. Durations are always a
+// whole number of 30 minute units, so there is never a leftover minute to
+// show beyond ":30".
+export function formatDuration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours}h` : `${hours}h${rest}`;
+}

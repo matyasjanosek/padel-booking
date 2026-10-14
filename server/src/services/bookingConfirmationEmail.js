@@ -19,7 +19,7 @@ const timeFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 function buildEmailText(booking) {
-  const { validFrom, validUntil } = gateCodeWindow(booking.startTime);
+  const { validFrom, validUntil } = gateCodeWindow(booking.startTime, booking.endTime);
 
   return `Hi ${booking.user.name},
 

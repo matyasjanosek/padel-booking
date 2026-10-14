@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../src/db/client.js", () => ({
   prisma: {
     booking: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    courtSlot: { createMany: vi.fn(), deleteMany: vi.fn() },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -50,6 +52,11 @@ function booking(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // rescheduleBooking and cancelBookingAsAdmin both run inside a
+  // transaction; the callback receives this same mocked prisma, standing
+  // in for the tx object a real interactive transaction hands it.
+  prisma.$transaction.mockImplementation((callback) => callback(prisma));
+  prisma.courtSlot.createMany.mockResolvedValue({ count: 0 });
 });
 
 describe("listBookingsForAdmin", () => {
@@ -110,14 +117,18 @@ describe("rescheduleBooking", () => {
     },
   );
 
-  it("returns slot_taken when the target slot is already booked", async () => {
-    prisma.booking.findUnique.mockResolvedValue(booking());
-    prisma.booking.update.mockRejectedValue(p2002());
+  it.each([p2002(), Object.assign(new Error("Write conflict"), { code: "P2034" })])(
+    "returns slot_taken when the target slot overlaps an existing booking",
+    async (error) => {
+      prisma.booking.findUnique.mockResolvedValue(booking());
+      prisma.booking.update.mockResolvedValue(booking({ startTime: newStartTime }));
+      prisma.courtSlot.createMany.mockRejectedValue(error);
 
-    const result = await rescheduleBooking(1, { courtId: newCourtId, startTime: newStartTime });
+      const result = await rescheduleBooking(1, { courtId: newCourtId, startTime: newStartTime });
 
-    expect(result).toEqual({ outcome: "slot_taken" });
-  });
+      expect(result).toEqual({ outcome: "slot_taken" });
+    },
+  );
 
   it("returns court_not_found when the target court does not exist", async () => {
     prisma.booking.findUnique.mockResolvedValue(booking());
@@ -126,6 +137,70 @@ describe("rescheduleBooking", () => {
     const result = await rescheduleBooking(1, { courtId: 999, startTime: newStartTime });
 
     expect(result).toEqual({ outcome: "court_not_found" });
+  });
+
+  it("returns would_exceed_closing without touching the booking, same as a new booking's own check", async () => {
+    // 19:30 UTC is 21:30 Prague summer time; this booking's own two hour
+    // duration would run until 23:30, past closing on any day of the week.
+    prisma.booking.findUnique.mockResolvedValue(
+      booking({
+        startTime: new Date("2030-06-10T05:00:00.000Z"),
+        endTime: new Date("2030-06-10T07:00:00.000Z"),
+      }),
+    );
+
+    const result = await rescheduleBooking(1, {
+      courtId: newCourtId,
+      startTime: new Date("2030-06-11T19:30:00.000Z"),
+    });
+
+    expect(result).toEqual({ outcome: "would_exceed_closing" });
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+
+  it("keeps the booking's own original duration, not a fixed one hour", async () => {
+    // A two hour booking, 09:00 to 11:00 Prague time.
+    const existing = booking({
+      startTime: new Date("2030-06-10T07:00:00.000Z"),
+      endTime: new Date("2030-06-10T09:00:00.000Z"),
+    });
+    prisma.booking.findUnique.mockResolvedValue(existing);
+    prisma.booking.update.mockResolvedValue(
+      booking({ courtId: newCourtId, startTime: newStartTime }),
+    );
+
+    const result = await rescheduleBooking(1, { courtId: newCourtId, startTime: newStartTime });
+
+    expect(result.outcome).toBe("rescheduled");
+    const { data } = prisma.booking.update.mock.calls[0][0];
+    expect(data.endTime).toEqual(new Date(newStartTime.getTime() + 2 * 60 * 60 * 1000));
+  });
+
+  it("frees the old court_slot rows and inserts the new ones, in the same transaction as the move", async () => {
+    prisma.booking.findUnique.mockResolvedValue(booking());
+    prisma.booking.update.mockResolvedValue(
+      booking({
+        id: 1,
+        courtId: newCourtId,
+        startTime: newStartTime,
+        endTime: new Date(newStartTime.getTime() + 60 * 60 * 1000),
+      }),
+    );
+
+    await rescheduleBooking(1, { courtId: newCourtId, startTime: newStartTime });
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.courtSlot.deleteMany).toHaveBeenCalledWith({ where: { bookingId: 1 } });
+    expect(prisma.courtSlot.createMany).toHaveBeenCalledWith({
+      data: [
+        { courtId: newCourtId, slotStart: newStartTime, bookingId: 1 },
+        {
+          courtId: newCourtId,
+          slotStart: new Date(newStartTime.getTime() + 30 * 60 * 1000),
+          bookingId: 1,
+        },
+      ],
+    });
   });
 
   it("moves a pending booking without touching lighting, nothing was ever scheduled", async () => {
@@ -210,6 +285,16 @@ describe("cancelBookingAsAdmin", () => {
     expect(prisma.booking.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: "cancelled", gateCode: null } }),
     );
+  });
+
+  it("frees every court_slot row for the booking, in the same transaction as the status change", async () => {
+    prisma.booking.findUnique.mockResolvedValue(booking());
+    prisma.booking.update.mockResolvedValue(booking({ status: "cancelled" }));
+
+    await cancelBookingAsAdmin(1);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.courtSlot.deleteMany).toHaveBeenCalledWith({ where: { bookingId: 1 } });
   });
 });
 
