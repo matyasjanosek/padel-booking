@@ -1,13 +1,21 @@
-// Bookable window and slot length, the same for every court and every day.
-// Hours are Europe/Prague wall clock time, see src/timezone.js.
-export const SLOT_LENGTH_MINUTES = 60;
+// Bookable window, the same for every court. Hours are Europe/Prague wall
+// clock time, see src/timezone.js. Closing time depends on the day: the
+// centre closes later on a weekday than at the weekend.
 export const OPENING_HOUR = 7;
-export const CLOSING_HOUR = 22;
+export const CLOSING_HOUR_WEEKDAY = 22;
+export const CLOSING_HOUR_WEEKEND = 20;
+
+// Every booking is a whole number of these units, the court's own grid is
+// drawn to this granularity too. A booking is at least two units long
+// (MIN_BOOKING_MINUTES), and any whole number of units longer than that.
+export const UNIT_LENGTH_MINUTES = 30;
+export const MIN_BOOKING_MINUTES = 60;
 
 // How long a pending booking holds its slot before it is free again, and the
-// price for one slot before any coupon discount.
+// price for one hour of court time before any coupon discount. The price for
+// a booking is this times its length in hours, computed on the server.
 export const HOLD_MINUTES = 10;
-export const PRICE_PER_SLOT_CZK = 400;
+export const PRICE_PER_HOUR_CZK = 400;
 
 // How often the background job sweeps for pending bookings whose hold has
 // passed and marks them expired.
