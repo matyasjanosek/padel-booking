@@ -9,19 +9,22 @@ import { scheduleLighting } from "../hardware/index.js";
 // Every handler below re-checks the booking and its payment are still in
 // the exact state the event expects before changing anything, so a late or
 // duplicate event can never confirm, fail or touch a booking it no longer
-// belongs to.
+// belongs to. Every event this ends up doing nothing with is still logged
+// with its own id and type, so none of this is silent.
 export async function handleStripeEvent(event) {
   if (event.type === "payment_intent.succeeded") {
-    await handlePaymentSucceeded(event.data.object);
+    await handlePaymentSucceeded(event);
   } else if (event.type === "payment_intent.payment_failed") {
-    await handlePaymentFailed(event.data.object);
+    await handlePaymentFailed(event);
   }
   // Any other event type is acknowledged but otherwise ignored.
 }
 
-async function handlePaymentSucceeded(paymentIntent) {
-  const booking = await findBookingForIntent(paymentIntent);
-  if (!isCurrentPendingPayment(booking, paymentIntent)) {
+async function handlePaymentSucceeded(event) {
+  const paymentIntent = event.data.object;
+  const { booking, bookingId, reason } = await findCurrentPendingPayment(paymentIntent);
+  if (!booking) {
+    logIgnoredEvent(event, bookingId, reason);
     return;
   }
 
@@ -60,17 +63,22 @@ async function handlePaymentSucceeded(paymentIntent) {
 
   // The booking is already paid and confirmed at this point. A failed email
   // must not undo that or fail the webhook, Stripe would just retry an
-  // event that already succeeded, so only the send itself is best effort.
+  // event that already succeeded, so only the send itself is best effort,
+  // but logged with enough to find and resend by hand afterwards.
   try {
     await sendBookingConfirmationEmail(confirmedBooking);
   } catch (error) {
-    console.error("Booking confirmation email failed:", error.message);
+    console.error(
+      `Stripe webhook: confirmation email for booking ${confirmedBooking.id} to ${confirmedBooking.user.email} failed: ${error.message}`,
+    );
   }
 }
 
-async function handlePaymentFailed(paymentIntent) {
-  const booking = await findBookingForIntent(paymentIntent);
-  if (!isCurrentPendingPayment(booking, paymentIntent)) {
+async function handlePaymentFailed(event) {
+  const paymentIntent = event.data.object;
+  const { booking, bookingId, reason } = await findCurrentPendingPayment(paymentIntent);
+  if (!booking) {
+    logIgnoredEvent(event, bookingId, reason);
     return;
   }
 
@@ -80,18 +88,19 @@ async function handlePaymentFailed(paymentIntent) {
   });
 }
 
-// Null means there is nothing this event can do, either its metadata never
-// named a real booking (for example a synthetic `stripe trigger` event, which
-// carries no metadata at all) or that booking no longer exists. Both are
-// logged and treated as "acknowledge and do nothing", not a processing
-// failure, so Stripe is not left retrying an event that can never succeed.
-async function findBookingForIntent(paymentIntent) {
+// Looks up the booking this payment intent's metadata names, and checks it
+// is still the exact pending payment the event expects: the booking may
+// have been reclaimed by a different attempt since this intent was
+// created, or already processed by an earlier delivery of the same event.
+// Returns the booking when it is safe to act on, or null together with the
+// booking id (if one was found) and the exact reason otherwise, for the
+// caller to log and ignore: missing metadata, booking not found, status
+// mismatch (the booking or the payment is no longer pending) or intent
+// mismatch (the booking's payment points at a different intent now).
+async function findCurrentPendingPayment(paymentIntent) {
   const bookingId = Number(paymentIntent.metadata?.bookingId);
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
-    console.error(
-      `Stripe webhook: payment intent ${paymentIntent.id} has no usable booking id in its metadata`,
-    );
-    return null;
+    return { booking: null, bookingId: null, reason: "missing metadata" };
   }
 
   const booking = await prisma.booking.findUnique({
@@ -99,19 +108,23 @@ async function findBookingForIntent(paymentIntent) {
     include: { payment: true },
   });
   if (!booking) {
-    console.error(`Stripe webhook: booking ${bookingId} does not exist`);
+    return { booking: null, bookingId, reason: "booking not found" };
   }
-  return booking;
+  if (booking.status !== "pending") {
+    return { booking: null, bookingId, reason: "status mismatch" };
+  }
+  if (booking.payment?.stripePaymentIntentId !== paymentIntent.id) {
+    return { booking: null, bookingId, reason: "intent mismatch" };
+  }
+  if (booking.payment.status !== "pending") {
+    return { booking: null, bookingId, reason: "status mismatch" };
+  }
+
+  return { booking };
 }
 
-// True only while this event's payment intent is still the one actually
-// attached to the booking, and nothing has processed it yet: the booking
-// may have been reclaimed by a different attempt since this intent was
-// created, and Stripe may redeliver the same event more than once.
-function isCurrentPendingPayment(booking, paymentIntent) {
-  return (
-    booking?.status === "pending" &&
-    booking.payment?.stripePaymentIntentId === paymentIntent.id &&
-    booking.payment.status === "pending"
+function logIgnoredEvent(event, bookingId, reason) {
+  console.error(
+    `Stripe webhook ignored: event ${event.id} (${event.type}), booking ${bookingId ?? "unknown"}, reason: ${reason}`,
   );
 }

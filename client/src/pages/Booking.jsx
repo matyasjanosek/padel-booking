@@ -16,6 +16,9 @@ export default function Booking() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get("date") || today;
+  // Set when arriving from a court's own link on the home page, so that
+  // court's grid is highlighted rather than the two courts looking identical.
+  const preselectedCourtId = Number(searchParams.get("court")) || null;
 
   const [courts, setCourts] = useState([]);
   // { [courtId]: { slots, price } }
@@ -142,14 +145,22 @@ export default function Booking() {
       {!loading && !loadError && (
         <div className="mt-8 grid gap-10 md:grid-cols-2">
           {courts.map((court) => (
-            <SlotGrid
+            <div
               key={court.id}
-              courtId={court.id}
-              courtName={court.name}
-              slots={availability[court.id]?.slots ?? []}
-              selectedStartTime={selectedSlot?.courtId === court.id ? selectedSlot.startTime : null}
-              onSelectSlot={handleSelectSlot}
-            />
+              className={`rounded-lg border p-4 ${
+                court.id === preselectedCourtId ? "border-accent/60" : "border-transparent"
+              }`}
+            >
+              <SlotGrid
+                courtId={court.id}
+                courtName={court.name}
+                slots={availability[court.id]?.slots ?? []}
+                selectedStartTime={
+                  selectedSlot?.courtId === court.id ? selectedSlot.startTime : null
+                }
+                onSelectSlot={handleSelectSlot}
+              />
+            </div>
           ))}
         </div>
       )}

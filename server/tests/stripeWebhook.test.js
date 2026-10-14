@@ -41,15 +41,17 @@ const confirmedBooking = {
   court: { name: "Court 1" },
 };
 
-function succeededEvent(bookingId = 1, paymentIntentId = "pi_1") {
+function succeededEvent(bookingId = 1, paymentIntentId = "pi_1", eventId = "evt_1") {
   return {
+    id: eventId,
     type: "payment_intent.succeeded",
     data: { object: { id: paymentIntentId, metadata: { bookingId: String(bookingId) } } },
   };
 }
 
-function failedEvent(bookingId = 1, paymentIntentId = "pi_1") {
+function failedEvent(bookingId = 1, paymentIntentId = "pi_1", eventId = "evt_1") {
   return {
+    id: eventId,
     type: "payment_intent.payment_failed",
     data: { object: { id: paymentIntentId, metadata: { bookingId: String(bookingId) } } },
   };
@@ -58,7 +60,7 @@ function failedEvent(bookingId = 1, paymentIntentId = "pi_1") {
 // `stripe trigger` fixtures (and any event for a payment intent this app
 // never created) carry no metadata naming a booking at all.
 function eventWithNoBookingId(type, metadata = {}) {
-  return { type, data: { object: { id: "pi_synthetic", metadata } } };
+  return { id: "evt_1", type, data: { object: { id: "pi_synthetic", metadata } } };
 }
 
 function pendingBooking(overrides = {}) {
@@ -113,7 +115,7 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     expect(sendBookingConfirmationEmail).toHaveBeenCalledWith(confirmedBooking);
   });
 
-  it("still confirms the booking when the confirmation email fails to send", async () => {
+  it("still confirms the booking when the confirmation email fails to send, and logs the booking id and recipient", async () => {
     prisma.booking.findUnique.mockResolvedValue(pendingBooking());
     sendBookingConfirmationEmail.mockRejectedValue(new Error("Resend is down"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -121,7 +123,9 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     await expect(handleStripeEvent(succeededEvent())).resolves.toBeUndefined();
 
     expect(prisma.$transaction).toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining(String(confirmedBooking.id)));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining(confirmedBooking.user.email));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("Resend is down"));
     consoleError.mockRestore();
   });
 
@@ -175,14 +179,18 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it("does nothing when the booking was reclaimed and now holds a different payment intent", async () => {
+  it("does nothing when the booking was reclaimed and now holds a different payment intent, and logs the event id and the reason", async () => {
     prisma.booking.findUnique.mockResolvedValue(
       pendingBooking({ payment: { stripePaymentIntentId: "pi_new", status: "pending" } }),
     );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await handleStripeEvent(succeededEvent(1, "pi_old"));
+    await handleStripeEvent(succeededEvent(1, "pi_old", "evt_reclaimed"));
 
     expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("evt_reclaimed"));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("intent mismatch"));
+    consoleError.mockRestore();
   });
 
   it("does nothing when the booking has no payment attached, for example it was already released", async () => {
