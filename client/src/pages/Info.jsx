@@ -124,7 +124,7 @@ export default function Info() {
 
             <div>
               <h2 className="mb-3 text-2xl">Price</h2>
-              <p className="font-heading text-[clamp(2.5rem,7vw,3.75rem)] font-bold leading-none tabular-nums text-accent">
+              <p className="numeral text-[clamp(2.5rem,7vw,3.75rem)] text-accent">
                 400 <span className="text-[0.4em] font-medium text-text-muted">CZK</span>
               </p>
               <p className="mt-2 text-text-muted">
