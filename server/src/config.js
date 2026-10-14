@@ -27,12 +27,13 @@ export const HOLD_EXPIRY_INTERVAL_SECONDS = 60;
 export const GATE_CODE_DIGITS = 6;
 
 // The gate code opens the gate from outside only, there is no code needed to
-// leave. Its window is measured from the slot's start time, not its end, so
-// it covers arriving a little early and running a little late. It has no
-// usage limit inside that window, every player on the court lets themselves
-// in separately.
+// leave. Its window covers the whole booking, from a short margin before the
+// start to a shorter one after the end, so it covers arriving a little early
+// and running a little late, however long the booking is. It has no usage
+// limit inside that window, every player on the court lets themselves in
+// separately.
 export const GATE_CODE_VALID_BEFORE_MINUTES = 20;
-export const GATE_CODE_VALID_AFTER_MINUTES = 45;
+export const GATE_CODE_VALID_AFTER_END_MINUTES = 15;
 
 // Resend's own sandbox sender, used in development until a real domain is
 // verified with Resend.
@@ -53,8 +54,9 @@ export const CONTACT_RATE_LIMIT_WINDOW_MINUTES = 15;
 // middleware/rateLimitGate.js. The gate keypad is one physical device, so
 // every real visitor shares its IP address, only failed attempts count
 // against this, never a correct code. Strict enough that brute forcing a 6
-// digit code within its whole 65 minute validity window (the two margins
-// above) is not practical: a few dozen guesses at most against a million
-// possible codes.
+// digit code within even its shortest possible validity window, a one hour
+// booking's own 95 minutes (the two margins above either side of it), is not
+// practical: a few dozen guesses at most against a million possible codes. A
+// longer booking only widens its own window, never makes guessing it faster.
 export const GATE_RATE_LIMIT_MAX_FAILURES = 5;
 export const GATE_RATE_LIMIT_WINDOW_MINUTES = 15;
