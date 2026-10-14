@@ -72,7 +72,7 @@ describe("GET /api/bookings and the gate code", () => {
     const found = bookings.find((b) => b.id === booking.id);
     expect(found.gateCode).toBe("248613");
     expect(found.gateCodeValidFrom).toBe("2031-06-10T17:40:00.000+02:00");
-    expect(found.gateCodeValidUntil).toBe("2031-06-10T18:45:00.000+02:00");
+    expect(found.gateCodeValidUntil).toBe("2031-06-10T19:15:00.000+02:00");
   });
 
   it("never returns this booking, or its gate code, to a different user", async () => {
