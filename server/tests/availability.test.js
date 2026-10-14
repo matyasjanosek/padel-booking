@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../src/db/client.js", () => ({
   prisma: {
     court: { findUnique: vi.fn() },
-    booking: { findMany: vi.fn(), updateMany: vi.fn() },
+    booking: { findMany: vi.fn() },
+    courtSlot: { findMany: vi.fn() },
     payment: { findUnique: vi.fn() },
   },
 }));
@@ -13,23 +14,74 @@ vi.mock("../src/stripeClient.js", () => ({
 }));
 
 import { prisma } from "../src/db/client.js";
-import { getAvailability } from "../src/services/availability.js";
-
-// expireStaleHolds runs first inside getAvailability and also calls
-// booking.findMany (to find stale holds, a query with no courtId), before
-// getAvailability's own lookup of that day's bookings (a query with
-// courtId). Both share this one mock; find the one each test cares about
-// by shape rather than by call order.
-function availabilityQueryCall() {
-  return prisma.booking.findMany.mock.calls.find(([{ where }]) => "courtId" in where);
-}
+import {
+  getAvailability,
+  slotStartsForDay,
+  closingInstantFor,
+} from "../src/services/availability.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
   prisma.court.findUnique.mockResolvedValue({ id: 1, name: "Court 1", isActive: true });
+  // expireStaleHolds's own lookup, run first inside getAvailability; no
+  // stale holds in any test here unless one overrides this.
   prisma.booking.findMany.mockResolvedValue([]);
-  prisma.booking.updateMany.mockResolvedValue({ count: 0 });
+  prisma.courtSlot.findMany.mockResolvedValue([]);
   prisma.payment.findUnique.mockResolvedValue(null);
+});
+
+describe("slotStartsForDay", () => {
+  it("returns 30 units on a weekday, 07:00 to 22:00", () => {
+    // 2026-11-02 is a Monday, already in Prague winter time, CET (UTC+1).
+    const starts = slotStartsForDay("2026-11-02");
+
+    expect(starts).toHaveLength(30);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-11-02T06:00:00.000Z");
+    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-11-02T20:30:00.000Z");
+  });
+
+  it("returns 26 units at the weekend, 07:00 to 20:00, closing two hours earlier than a weekday", () => {
+    // 2026-09-20 is a Sunday, Prague summer time, CEST (UTC+2).
+    const starts = slotStartsForDay("2026-09-20");
+
+    expect(starts).toHaveLength(26);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-09-20T05:00:00.000Z");
+    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-09-20T17:30:00.000Z");
+  });
+
+  it("still produces 26 weekend units across the day clocks spring forward", () => {
+    // 2026-03-29: clocks jump from 02:00 CET to 03:00 CEST at 01:00 UTC,
+    // well before the 07:00 opening, so the whole day uses CEST (UTC+2).
+    // Also a Sunday, so the weekend closing hour applies too.
+    const starts = slotStartsForDay("2026-03-29");
+
+    expect(starts).toHaveLength(26);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-03-29T05:00:00.000Z");
+    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-03-29T17:30:00.000Z");
+  });
+
+  it("still produces 26 weekend units across the day clocks fall back", () => {
+    // 2026-10-25: clocks jump from 03:00 CEST back to 02:00 CET at 01:00
+    // UTC, well before the 07:00 opening, so the whole day uses CET
+    // (UTC+1). Also a Sunday.
+    const starts = slotStartsForDay("2026-10-25");
+
+    expect(starts).toHaveLength(26);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-10-25T06:00:00.000Z");
+    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-10-25T18:30:00.000Z");
+  });
+});
+
+describe("closingInstantFor", () => {
+  it("is 22:00 Prague time on a weekday", () => {
+    const instant = closingInstantFor(new Date("2026-11-02T10:00:00.000Z"));
+    expect(instant.toISOString()).toBe("2026-11-02T21:00:00.000Z");
+  });
+
+  it("is 20:00 Prague time at the weekend", () => {
+    const instant = closingInstantFor(new Date("2026-09-20T10:00:00.000Z"));
+    expect(instant.toISOString()).toBe("2026-09-20T18:00:00.000Z");
+  });
 });
 
 describe("getAvailability", () => {
@@ -39,7 +91,7 @@ describe("getAvailability", () => {
     const result = await getAvailability(99, "2026-09-20");
 
     expect(result).toBeNull();
-    expect(prisma.booking.findMany).not.toHaveBeenCalled();
+    expect(prisma.courtSlot.findMany).not.toHaveBeenCalled();
   });
 
   it("returns null when the court is inactive, the same as if it did not exist", async () => {
@@ -48,72 +100,68 @@ describe("getAvailability", () => {
     const result = await getAvailability(1, "2026-09-20");
 
     expect(result).toBeNull();
-    expect(prisma.booking.findMany).not.toHaveBeenCalled();
+    expect(prisma.courtSlot.findMany).not.toHaveBeenCalled();
   });
 
-  it("returns one slot per hour across the opening hours, in Prague summer time", async () => {
-    // September 20 is still CEST, UTC+2.
-    const slots = await getAvailability(1, "2026-09-20");
-
-    expect(slots).toHaveLength(15); // 07:00 to 21:00
-    expect(slots[0]).toEqual({
-      startTime: "2026-09-20T07:00:00.000+02:00",
-      endTime: "2026-09-20T08:00:00.000+02:00",
-      status: "free",
-    });
-    expect(slots.at(-1)).toEqual({
-      startTime: "2026-09-20T21:00:00.000+02:00",
-      endTime: "2026-09-20T22:00:00.000+02:00",
-      status: "free",
-    });
-    expect(slots.every((slot) => slot.status === "free")).toBe(true);
-  });
-
-  it("shows Prague winter time, UTC+1, for a date after the clocks change back", async () => {
+  it("returns every unit free, with the longest duration that fits each, on a weekday with nothing booked", async () => {
+    // November 2 is a Monday, winter time, CET (UTC+1), closing 22:00.
     const slots = await getAvailability(1, "2026-11-02");
 
-    expect(slots[0].startTime).toBe("2026-11-02T07:00:00.000+01:00");
-    expect(slots.at(-1).endTime).toBe("2026-11-02T22:00:00.000+01:00");
+    expect(slots).toHaveLength(30);
+    expect(slots[0]).toEqual({
+      startTime: "2026-11-02T07:00:00.000+01:00",
+      endTime: "2026-11-02T07:30:00.000+01:00",
+      status: "free",
+      maxUnits: 30,
+    });
+    expect(slots.at(-1)).toEqual({
+      startTime: "2026-11-02T21:30:00.000+01:00",
+      endTime: "2026-11-02T22:00:00.000+01:00",
+      status: "free",
+      maxUnits: 1,
+    });
   });
 
-  it("marks a slot taken when a booking starts at that time", async () => {
-    // 09:00 Prague summer time is 07:00 UTC. The expiry sweep's own
-    // findMany call also resolves to this value by default; it is a
-    // separate query (no courtId) so getAvailability never sees it.
-    prisma.booking.findMany.mockImplementation(({ where }) =>
-      Promise.resolve(
-        "courtId" in where ? [{ startTime: new Date("2026-09-20T07:00:00.000Z") }] : [],
-      ),
-    );
-
-    const slots = await getAvailability(1, "2026-09-20");
-
-    const nineOClock = slots.find((slot) => slot.startTime === "2026-09-20T09:00:00.000+02:00");
-    expect(nineOClock.status).toBe("taken");
-    expect(slots.filter((slot) => slot.status === "taken")).toHaveLength(1);
-  });
-
-  it("asks the database only for confirmed bookings or pending bookings with an unexpired hold", async () => {
-    await getAvailability(1, "2026-09-20");
-
-    const { where } = availabilityQueryCall()[0];
-    expect(where.courtId).toBe(1);
-    expect(where.OR).toEqual([
-      { status: "confirmed" },
-      { status: "pending", holdExpiresAt: { gt: expect.any(Date) } },
+  it("marks only the units a booking actually occupies as taken, and shortens the free run before it", async () => {
+    // A booking from 09:00 to 10:00 Prague time (08:00 and 08:30 UTC)
+    // occupies exactly two units.
+    prisma.courtSlot.findMany.mockResolvedValue([
+      { slotStart: new Date("2026-11-02T08:00:00.000Z") },
+      { slotStart: new Date("2026-11-02T08:30:00.000Z") },
     ]);
+
+    const slots = await getAvailability(1, "2026-11-02");
+
+    const taken = slots.filter((slot) => slot.status === "taken");
+    expect(taken.map((slot) => slot.startTime)).toEqual([
+      "2026-11-02T09:00:00.000+01:00",
+      "2026-11-02T09:30:00.000+01:00",
+    ]);
+    expect(taken[0]).not.toHaveProperty("maxUnits");
+
+    // The free unit right before the taken pair has nowhere to run into,
+    // only itself fits, where it would otherwise have had room for much
+    // more of the day.
+    const unitBefore = slots.find((slot) => slot.startTime === "2026-11-02T08:30:00.000+01:00");
+    expect(unitBefore.maxUnits).toBe(1);
   });
 
-  it("only looks at bookings within that day's Prague opening hours, as UTC instants", async () => {
+  it("asks court_slots only for this court within that day's opening hours, as UTC instants", async () => {
     await getAvailability(1, "2026-09-20");
 
-    const { where } = availabilityQueryCall()[0];
-    // 07:00 and 22:00 Prague summer time.
-    expect(where.startTime.gte.toISOString()).toBe("2026-09-20T05:00:00.000Z");
-    expect(where.startTime.lt.toISOString()).toBe("2026-09-20T20:00:00.000Z");
+    expect(prisma.courtSlot.findMany).toHaveBeenCalledWith({
+      where: {
+        courtId: 1,
+        slotStart: {
+          gte: new Date("2026-09-20T05:00:00.000Z"),
+          lt: new Date("2026-09-20T18:00:00.000Z"),
+        },
+      },
+      select: { slotStart: true },
+    });
   });
 
-  it("sweeps stale holds before reading bookings, so a hold that just expired is not read back as taken", async () => {
+  it("sweeps stale holds before reading court_slots, so one that just expired is not read back as taken", async () => {
     await getAvailability(1, "2026-09-20");
 
     expect(prisma.booking.findMany).toHaveBeenCalledWith({
