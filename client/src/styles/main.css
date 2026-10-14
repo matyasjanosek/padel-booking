@@ -40,6 +40,33 @@
     font-family: var(--font-heading);
     font-weight: 700;
     line-height: 1.1;
+    text-wrap: balance;
+  }
+}
+
+/* The two button kinds used everywhere: primary is the filled, accent
+   button, one per page, for the one action that matters. Secondary is
+   everything else. Both get a visible focus ring in addition to the
+   existing hover/border colour change, a hard-edged double shadow rather
+   than a blur so it stays crisp and reads the same over either fill. */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-accent px-7 py-3 font-medium text-bg
+      transition-[filter] duration-200 hover:brightness-90 disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-full border border-border px-7 py-3 font-medium
+      text-text transition-colors duration-200 hover:border-accent hover:text-accent
+      disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-primary:focus-visible,
+  .btn-secondary:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-bg),
+      0 0 0 4px var(--color-accent);
   }
 }
 
