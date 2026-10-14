@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchCourts } from "./api/courts.js";
 import Hero from "./components/Hero.jsx";
 
@@ -25,11 +26,13 @@ export default function App() {
         ) : (
           <ul className="flex flex-wrap gap-3">
             {courts.map((court) => (
-              <li
-                key={court.id}
-                className="rounded-lg border border-border px-4 py-2.5 font-heading font-bold"
-              >
-                {court.name}
+              <li key={court.id}>
+                <Link
+                  to={`/booking?court=${court.id}`}
+                  className="inline-block rounded-lg border border-border px-4 py-2.5 font-heading font-bold text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+                >
+                  {court.name}
+                </Link>
               </li>
             ))}
           </ul>

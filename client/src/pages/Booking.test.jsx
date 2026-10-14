@@ -195,4 +195,16 @@ describe("Booking", () => {
 
     expect(screen.getByRole("button", { name: /previous day/i })).toBeDisabled();
   });
+
+  it("highlights the court named in the court query param", async () => {
+    renderBooking(["/booking?date=2030-06-10&court=2"]);
+
+    const court1Heading = await screen.findByRole("heading", { name: "Court 1", level: 3 });
+    const court2Heading = screen.getByRole("heading", { name: "Court 2", level: 3 });
+
+    // closest("div") finds SlotGrid's own inner wrapper first, the
+    // highlight border is one level up, on the wrapper this page adds.
+    expect(court1Heading.closest("div").parentElement.className).toContain("border-transparent");
+    expect(court2Heading.closest("div").parentElement.className).toContain("border-accent");
+  });
 });

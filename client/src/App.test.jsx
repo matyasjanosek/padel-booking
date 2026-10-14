@@ -36,4 +36,10 @@ describe("App", () => {
     renderApp();
     expect(await screen.findByText("Court 1")).toBeInTheDocument();
   });
+
+  it("links each court to its own preselected spot on the booking page", async () => {
+    renderApp();
+    const link = await screen.findByRole("link", { name: "Court 1" });
+    expect(link).toHaveAttribute("href", "/booking?court=1");
+  });
 });
