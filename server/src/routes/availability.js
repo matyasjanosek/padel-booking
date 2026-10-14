@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { validateAvailabilityQuery } from "../middleware/validateAvailability.js";
 import { getAvailability } from "../services/availability.js";
-import { SLOT_LENGTH_MINUTES, PRICE_PER_SLOT_CZK } from "../config.js";
+import { UNIT_LENGTH_MINUTES, PRICE_PER_HOUR_CZK } from "../config.js";
 
 export const availabilityRouter = Router();
 
@@ -15,7 +15,13 @@ availabilityRouter.get("/availability", validateAvailabilityQuery, async (req, r
     }
     // Sent here, not hardcoded on the client, so the price shown before
     // booking always matches what booking creation will actually charge.
-    res.json({ date, courtId, slotMinutes: SLOT_LENGTH_MINUTES, price: PRICE_PER_SLOT_CZK, slots });
+    res.json({
+      date,
+      courtId,
+      unitMinutes: UNIT_LENGTH_MINUTES,
+      pricePerHour: PRICE_PER_HOUR_CZK,
+      slots,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Could not load availability" });
