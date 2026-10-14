@@ -13,6 +13,7 @@ import { adminBookingsRouter } from "./routes/adminBookings.js";
 import { adminCourtsRouter } from "./routes/adminCourts.js";
 import { adminUsersRouter } from "./routes/adminUsers.js";
 import { adminCouponsRouter } from "./routes/adminCoupons.js";
+import { contactRouter } from "./routes/contact.js";
 
 // The client's built files, one directory up from server/. In production
 // this is the Vite build, created by "npm run build" at the repo root
@@ -38,6 +39,7 @@ export function createApp() {
   app.use("/api", adminCourtsRouter);
   app.use("/api", adminUsersRouter);
   app.use("/api", adminCouponsRouter);
+  app.use("/api", contactRouter);
 
   // Everything that is not an API call is the client's single page app:
   // real static files first (JS, CSS, images), then index.html for any

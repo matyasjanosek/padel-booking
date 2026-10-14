@@ -28,6 +28,17 @@ export const GATE_CODE_VALID_AFTER_MINUTES = 45;
 // verified with Resend.
 export const EMAIL_FROM_ADDRESS = "onboarding@resend.dev";
 
+// Where a contact form message is sent, the same address the Contact page
+// itself shows.
+export const CONTACT_RECIPIENT_ADDRESS = "info@genpadel.cz";
+
+// Rate limiting for the public contact form, see
+// middleware/rateLimitContact.js. Every submission counts, not only failed
+// ones, this is about limiting how much mail one visitor can trigger, not
+// about guessing anything.
+export const CONTACT_RATE_LIMIT_MAX_MESSAGES = 3;
+export const CONTACT_RATE_LIMIT_WINDOW_MINUTES = 15;
+
 // Rate limiting for the public gate code validation endpoint, see
 // middleware/rateLimitGate.js. The gate keypad is one physical device, so
 // every real visitor shares its IP address, only failed attempts count
