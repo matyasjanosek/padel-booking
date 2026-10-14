@@ -107,6 +107,9 @@ export default function Account() {
                     <p className="text-sm text-text-muted">
                       Enter this code on the keypad outside. The gate always opens from the inside.
                     </p>
+                    <p className="text-sm text-text-muted">
+                      You can also find this code in your confirmation email.
+                    </p>
                   </>
                 )}
               </div>
