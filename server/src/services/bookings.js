@@ -136,7 +136,7 @@ export function toPublicBooking(booking) {
   // cancelled booking would still show one.
   const hasGateCode = booking.status === "confirmed";
   const { validFrom, validUntil } = hasGateCode
-    ? gateCodeWindow(booking.startTime)
+    ? gateCodeWindow(booking.startTime, booking.endTime)
     : { validFrom: null, validUntil: null };
 
   return {
