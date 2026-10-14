@@ -60,11 +60,14 @@ async function handlePaymentSucceeded(paymentIntent) {
 
   // The booking is already paid and confirmed at this point. A failed email
   // must not undo that or fail the webhook, Stripe would just retry an
-  // event that already succeeded, so only the send itself is best effort.
+  // event that already succeeded, so only the send itself is best effort,
+  // but logged with enough to find and resend by hand afterwards.
   try {
     await sendBookingConfirmationEmail(confirmedBooking);
   } catch (error) {
-    console.error("Booking confirmation email failed:", error.message);
+    console.error(
+      `Stripe webhook: confirmation email for booking ${confirmedBooking.id} to ${confirmedBooking.user.email} failed: ${error.message}`,
+    );
   }
 }
 
