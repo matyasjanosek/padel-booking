@@ -45,7 +45,7 @@ export default function SlotGrid({ courtId, courtName, slots, selectedStartTime,
               type="button"
               disabled={state !== "free" && state !== "selected"}
               onClick={() =>
-                onSelectSlot({ courtId, startTime: slot.startTime, endTime: slot.endTime })
+                onSelectSlot({ courtId, startTime: slot.startTime, maxUnits: slot.maxUnits })
               }
               className={`rounded-lg px-2 py-2.5 text-center transition-colors duration-200 disabled:cursor-default ${STATE_CLASSES[state]}`}
             >

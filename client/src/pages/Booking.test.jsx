@@ -32,20 +32,32 @@ const COURTS = [
   { id: 2, name: "Court 2" },
 ];
 
+// maxUnits: 4 means two hours are free after this start, enough for every
+// duration up to 2h.
 const freeSlot = {
   startTime: "2030-06-10T07:00:00.000+02:00",
+  endTime: "2030-06-10T07:30:00.000+02:00",
+  status: "free",
+  maxUnits: 4,
+};
+// Free, but only this one unit, below the one hour minimum: no duration
+// fits starting here.
+const tooShortSlot = {
+  startTime: "2030-06-10T07:30:00.000+02:00",
   endTime: "2030-06-10T08:00:00.000+02:00",
   status: "free",
+  maxUnits: 1,
 };
 const takenSlot = {
   startTime: "2030-06-10T08:00:00.000+02:00",
-  endTime: "2030-06-10T09:00:00.000+02:00",
+  endTime: "2030-06-10T08:30:00.000+02:00",
   status: "taken",
 };
 const pastFreeSlot = {
   startTime: "2020-01-01T07:00:00.000+01:00",
-  endTime: "2020-01-01T08:00:00.000+01:00",
+  endTime: "2020-01-01T07:30:00.000+01:00",
   status: "free",
+  maxUnits: 4,
 };
 
 function renderBooking(initialEntries = ["/booking?date=2030-06-10"]) {
@@ -64,7 +76,8 @@ beforeEach(() => {
     Promise.resolve({
       date,
       courtId,
-      price: 400,
+      unitMinutes: 30,
+      pricePerHour: 400,
       slots: courtId === 1 ? [freeSlot, takenSlot, pastFreeSlot] : [freeSlot],
     }),
   );
@@ -97,7 +110,7 @@ describe("Booking", () => {
 
   it("shows a clear empty state when a court has no free slots left", async () => {
     fetchAvailability.mockImplementation(({ courtId, date }) =>
-      Promise.resolve({ date, courtId, price: 400, slots: [takenSlot] }),
+      Promise.resolve({ date, courtId, unitMinutes: 30, pricePerHour: 400, slots: [takenSlot] }),
     );
     renderBooking();
 
@@ -117,14 +130,50 @@ describe("Booking", () => {
     expect(createBooking).not.toHaveBeenCalled();
   });
 
-  it("shows the court, time and price before booking", async () => {
+  it("shows the court, time and price for the default, shortest duration", async () => {
     renderBooking();
 
     const freeButton = (await screen.findAllByText("Free"))[0].closest("button");
     fireEvent.click(freeButton);
 
     expect(await screen.findByText(/Court 1,/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Duration")).toHaveValue("60");
     expect(screen.getByText("400 CZK")).toBeInTheDocument();
+  });
+
+  it("offers every duration up to the longest that fits, and prices each one", async () => {
+    renderBooking();
+
+    fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
+    const durationSelect = screen.getByLabelText("Duration");
+    expect(Array.from(durationSelect.options).map((option) => option.textContent)).toEqual([
+      "1h",
+      "1h30",
+      "2h",
+    ]);
+
+    fireEvent.change(durationSelect, { target: { value: "120" } });
+
+    expect(screen.getByText("800 CZK")).toBeInTheDocument();
+  });
+
+  it("shows no duration options and disables confirming when nothing fits the chosen start", async () => {
+    fetchAvailability.mockImplementation(({ courtId, date }) =>
+      Promise.resolve({
+        date,
+        courtId,
+        unitMinutes: 30,
+        pricePerHour: 400,
+        slots: [tooShortSlot],
+      }),
+    );
+    renderBooking();
+
+    fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
+
+    expect(screen.getByText(/no booking length fits/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
   });
 
   it("books the slot on confirm and goes to checkout", async () => {
@@ -138,17 +187,19 @@ describe("Booking", () => {
       expect(createBooking).toHaveBeenCalledWith({
         courtId: 1,
         startTime: freeSlot.startTime,
+        durationMinutes: 60,
         couponCode: undefined,
       }),
     );
     expect(navigate).toHaveBeenCalledWith("/booking/42/checkout");
   });
 
-  it("sends a trimmed coupon code along with the booking", async () => {
+  it("sends the chosen duration and a trimmed coupon code along with the booking", async () => {
     createBooking.mockResolvedValue({ id: 42 });
     renderBooking();
 
     fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
+    fireEvent.change(screen.getByLabelText("Duration"), { target: { value: "90" } });
     fireEvent.change(await screen.findByLabelText(/coupon code/i), {
       target: { value: "  summer10  " },
     });
@@ -158,6 +209,7 @@ describe("Booking", () => {
       expect(createBooking).toHaveBeenCalledWith({
         courtId: 1,
         startTime: freeSlot.startTime,
+        durationMinutes: 90,
         couponCode: "summer10",
       }),
     );
