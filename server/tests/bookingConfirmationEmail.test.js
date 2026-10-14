@@ -53,8 +53,8 @@ describe("sendBookingConfirmationEmail", () => {
     expect(text).toContain("18:00 to 19:00");
     expect(text).toContain("400 CZK");
     expect(text).toContain("123456");
-    // 20 minutes before 18:00, 45 minutes after 18:00, not measured from the end.
-    expect(text).toContain("17:40 to 18:45");
+    // 20 minutes before the 18:00 start, 15 minutes after the 19:00 end.
+    expect(text).toContain("17:40 to 19:15");
   });
 
   it("throws when Resend reports an error, so the caller decides what to do", async () => {
