@@ -44,8 +44,8 @@ describe("GET /api/availability", () => {
     expect(await res.json()).toEqual({
       date: "2026-09-20",
       courtId: 1,
-      slotMinutes: 60,
-      price: 400,
+      unitMinutes: 30,
+      pricePerHour: 400,
       slots: fakeSlots,
     });
     expect(getAvailability).toHaveBeenCalledWith(1, "2026-09-20");
