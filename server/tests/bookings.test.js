@@ -20,11 +20,16 @@ vi.mock("../src/stripeClient.js", () => ({
   getStripe: vi.fn(() => ({ paymentIntents: { cancel: vi.fn().mockResolvedValue({}) } })),
 }));
 
+vi.mock("../src/hardware/index.js", () => ({
+  cancelLighting: vi.fn(),
+}));
+
 function p2002() {
   return Object.assign(new Error("Unique constraint failed"), { code: "P2002" });
 }
 
 import { prisma } from "../src/db/client.js";
+import { cancelLighting } from "../src/hardware/index.js";
 import {
   createBooking,
   listBookingsForUser,
@@ -244,7 +249,13 @@ describe("listBookingsForUser", () => {
 });
 
 describe("cancelBooking", () => {
-  const booking = { id: 1, userId: 5, status: "pending" };
+  const booking = {
+    id: 1,
+    userId: 5,
+    courtId: 2,
+    startTime: new Date("2030-06-10T07:00:00.000Z"),
+    status: "pending",
+  };
 
   it("returns not_found for a booking that does not exist", async () => {
     prisma.booking.findUnique.mockResolvedValue(null);
@@ -302,6 +313,24 @@ describe("cancelBooking", () => {
     await cancelBooking(1, 5);
 
     expect(prisma.payment.delete).toHaveBeenCalledWith({ where: { bookingId: 1 } });
+  });
+
+  it("cancels the lighting schedule when cancelling a confirmed booking", async () => {
+    prisma.booking.findUnique.mockResolvedValue({ ...booking, status: "confirmed" });
+    prisma.booking.update.mockResolvedValue({ ...booking, status: "cancelled" });
+
+    await cancelBooking(1, 5);
+
+    expect(cancelLighting).toHaveBeenCalledWith({ courtId: 2, startTime: booking.startTime });
+  });
+
+  it("does not touch lighting when cancelling a pending booking, nothing was ever scheduled", async () => {
+    prisma.booking.findUnique.mockResolvedValue(booking);
+    prisma.booking.update.mockResolvedValue({ ...booking, status: "cancelled" });
+
+    await cancelBooking(1, 5);
+
+    expect(cancelLighting).not.toHaveBeenCalled();
   });
 });
 

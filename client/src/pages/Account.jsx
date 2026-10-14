@@ -107,6 +107,9 @@ export default function Account() {
                     <p className="text-sm text-text-muted">
                       Enter this code on the keypad outside. The gate always opens from the inside.
                     </p>
+                    <p className="text-sm text-text-muted">
+                      You can also find this code in your confirmation email.
+                    </p>
                   </>
                 )}
               </div>
@@ -122,23 +125,30 @@ export default function Account() {
                 )}
                 {CANCELLABLE_STATUSES.includes(booking.status) &&
                   (confirmingId === booking.id ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-2">
                       <span className="text-sm text-text-muted">Cancel this booking?</span>
-                      <button
-                        type="button"
-                        onClick={() => handleCancel(booking.id)}
-                        disabled={cancellingId === booking.id}
-                        className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-danger transition-colors duration-200 hover:border-danger disabled:opacity-50"
-                      >
-                        {cancellingId === booking.id ? "Cancelling..." : "Yes, cancel"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmingId(null)}
-                        className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
-                      >
-                        No
-                      </button>
+                      {booking.status === "confirmed" && (
+                        <span className="text-sm text-text-muted">
+                          This booking is paid and will not be refunded.
+                        </span>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleCancel(booking.id)}
+                          disabled={cancellingId === booking.id}
+                          className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-danger transition-colors duration-200 hover:border-danger disabled:opacity-50"
+                        >
+                          {cancellingId === booking.id ? "Cancelling..." : "Yes, cancel"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingId(null)}
+                          className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+                        >
+                          No
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button

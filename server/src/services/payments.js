@@ -124,12 +124,26 @@ export async function createPaymentIntentForBooking(bookingId, userId) {
 // the row, not necessarily the person who paid. Cancelling the intent at
 // Stripe and clearing the local payment row makes the slot start
 // financially clean for whoever books it next.
+//
+// The row is only deleted once the cancel at Stripe has actually gone
+// through. A failed cancel, for example because the intent already
+// succeeded, means the row might still represent a real payment, so it is
+// left in place rather than deleted, findable later by its own
+// stripePaymentIntentId or by this bookingId, and the failure is logged
+// rather than swallowed.
 export async function releasePaymentIfPending(bookingId) {
   const payment = await prisma.payment.findUnique({ where: { bookingId } });
   if (!payment || payment.status !== "pending") {
     return;
   }
   const stripe = getStripe();
-  await stripe.paymentIntents.cancel(payment.stripePaymentIntentId).catch(() => {});
+  try {
+    await stripe.paymentIntents.cancel(payment.stripePaymentIntentId);
+  } catch (error) {
+    console.error(
+      `Could not cancel Stripe payment intent ${payment.stripePaymentIntentId} for booking ${bookingId}: ${error.message}`,
+    );
+    return;
+  }
   await prisma.payment.delete({ where: { bookingId } });
 }
