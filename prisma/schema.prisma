@@ -74,8 +74,9 @@ model Court {
   name     String
   isActive Boolean @default(true) @map("is_active")
 
-  bookings Booking[]
-  matches  TournamentMatch[]
+  bookings   Booking[]
+  matches    TournamentMatch[]
+  courtSlots CourtSlot[]
 
   @@map("courts")
 }
@@ -98,8 +99,30 @@ model Booking {
   coupon  Coupon? @relation(fields: [couponId], references: [id])
   payment Payment?
 
-  @@unique([courtId, startTime])
+  courtSlots CourtSlot[]
+
   @@map("bookings")
+}
+
+// One row per 30 minute unit a booking currently occupies on a court. The
+// primary key is the actual double booking guarantee: inserting every unit a
+// new booking covers, inside the same transaction that creates the booking
+// itself, means any overlap with an existing booking, whatever its own start
+// time, fails this key and rolls back the whole insert. A booking's own
+// start_time and end_time no longer carry any uniqueness constraint, this
+// table is the only thing enforcing it. Rows exist only while a booking
+// genuinely holds that time: they are deleted when its hold expires or it is
+// cancelled, not kept around and reused.
+model CourtSlot {
+  courtId   Int      @map("court_id")
+  slotStart DateTime @map("slot_start")
+  bookingId Int      @map("booking_id")
+
+  court   Court   @relation(fields: [courtId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@id([courtId, slotStart])
+  @@map("court_slots")
 }
 
 model Coupon {
