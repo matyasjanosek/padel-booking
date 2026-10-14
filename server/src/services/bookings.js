@@ -4,6 +4,7 @@ import { formatPragueIso } from "../timezone.js";
 import { releasePaymentIfPending } from "./payments.js";
 import { validateCoupon, applyDiscount, COUPON_ERROR_MESSAGES } from "./coupons.js";
 import { gateCodeWindow } from "./gateCode.js";
+import { cancelLighting } from "../hardware/index.js";
 
 const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
 const HOLD_MS = HOLD_MINUTES * 60 * 1000;
@@ -119,7 +120,10 @@ export function listBookingsForUser(userId) {
 //
 // gateCode is cleared, not just left behind: a cancelled booking must not
 // carry a code that still looks live sitting in the row, even though
-// gateAccess.js's own status check already refuses it either way.
+// gateAccess.js's own status check already refuses it either way. The same
+// reasoning applies to lighting: a confirmed booking already has it
+// scheduled (see stripeWebhook.js), and cancelling must cancel that too, or
+// the lights would still come on for a booking that no longer exists.
 export async function cancelBooking(bookingId, userId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
 
@@ -138,6 +142,9 @@ export async function cancelBooking(bookingId, userId) {
     data: { status: "cancelled", gateCode: null },
   });
   await releasePaymentIfPending(bookingId);
+  if (booking.status === "confirmed") {
+    cancelLighting({ courtId: booking.courtId, startTime: booking.startTime });
+  }
   return { outcome: "cancelled", booking: cancelled };
 }
 

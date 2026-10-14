@@ -121,6 +121,9 @@ export default function Checkout() {
           {booking.couponCode && (
             <p className="mt-1 text-sm text-accent">Coupon {booking.couponCode} applied</p>
           )}
+          <p className="mt-1 text-sm text-text-muted">
+            Once this is paid, we will email you the gate code too.
+          </p>
 
           {checkout && stripePromise && (
             <Elements stripe={stripePromise} options={{ clientSecret: checkout.clientSecret }}>

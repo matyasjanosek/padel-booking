@@ -86,6 +86,9 @@ describe("Checkout", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("400 CZK")).toBeInTheDocument();
     expect(createPaymentIntent).toHaveBeenCalledWith(1);
+    expect(
+      screen.getByText("Once this is paid, we will email you the gate code too."),
+    ).toBeInTheDocument();
   });
 
   it("shows the applied coupon code next to the already discounted price", async () => {

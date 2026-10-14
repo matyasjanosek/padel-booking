@@ -1,6 +1,32 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { sendContactMessage } from "../api/contact.js";
 
 export default function Contact() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [sent, setSent] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setSending(true);
+    setError("");
+    try {
+      await sendContactMessage({ name, email, message });
+      setSent(true);
+      setName("");
+      setEmail("");
+      setMessage("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <>
       <section className="px-5 pb-8 pt-12 md:max-w-page md:pb-10 md:pl-24 md:pr-10 md:pt-16">
@@ -12,7 +38,7 @@ export default function Contact() {
 
       <section className="border-t border-border px-5 py-12 md:max-w-page md:py-16 md:pl-24 md:pr-10">
         <div className="grid gap-12 md:grid-cols-2 md:gap-16">
-          <form className="flex flex-col gap-5" onSubmit={(event) => event.preventDefault()}>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="name" className="text-sm font-medium">
                 Name
@@ -21,6 +47,8 @@ export default function Contact() {
                 id="name"
                 name="name"
                 type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
                 required
                 className="rounded-lg border border-border bg-surface px-4 py-2.5 text-text placeholder:text-text-muted focus:border-accent focus:outline-none"
               />
@@ -33,6 +61,8 @@ export default function Contact() {
                 id="email"
                 name="email"
                 type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 required
                 className="rounded-lg border border-border bg-surface px-4 py-2.5 text-text placeholder:text-text-muted focus:border-accent focus:outline-none"
               />
@@ -45,15 +75,26 @@ export default function Contact() {
                 id="message"
                 name="message"
                 rows={5}
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
                 required
                 className="resize-none rounded-lg border border-border bg-surface px-4 py-2.5 text-text placeholder:text-text-muted focus:border-accent focus:outline-none"
               />
             </div>
+
+            {sent && (
+              <p className="text-sm text-accent">
+                Your message has been sent. We will get back to you soon.
+              </p>
+            )}
+            {error && <p className="text-sm text-danger">{error}</p>}
+
             <button
               type="submit"
-              className="mt-2 inline-block self-start rounded-full border border-border px-7 py-3 font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+              disabled={sending}
+              className="mt-2 inline-block self-start rounded-full border border-border px-7 py-3 font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
             >
-              Send message
+              {sending ? "Sending..." : "Send message"}
             </button>
           </form>
 

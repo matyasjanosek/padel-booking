@@ -143,6 +143,27 @@ describe("Account", () => {
     expect(cancelBooking).not.toHaveBeenCalled();
   });
 
+  it("warns that a paid booking will not be refunded before confirming", async () => {
+    fetchMyBookings.mockResolvedValue([confirmedUpcomingBooking]);
+    renderAccount();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(
+      await screen.findByText("This booking is paid and will not be refunded."),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the refund warning for a pending, unpaid booking", async () => {
+    fetchMyBookings.mockResolvedValue([pendingBooking]);
+    renderAccount();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await screen.findByText("Cancel this booking?");
+
+    expect(screen.queryByText(/will not be refunded/i)).not.toBeInTheDocument();
+  });
+
   it("dismisses the confirmation without cancelling when the user says no", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
     renderAccount();
@@ -187,6 +208,9 @@ describe("Account", () => {
       await screen.findByText("Code 482913, works at the gate from 17:40 until 18:45"),
     ).toBeInTheDocument();
     expect(screen.getByText(/enter this code on the keypad outside/i)).toBeInTheDocument();
+    expect(
+      screen.getByText("You can also find this code in your confirmation email."),
+    ).toBeInTheDocument();
   });
 
   it("never shows a gate code for a pending or a cancelled booking", async () => {
@@ -196,6 +220,7 @@ describe("Account", () => {
     await screen.findByText("Pending, 400 CZK");
     expect(screen.queryByText(/^Code /)).not.toBeInTheDocument();
     expect(screen.queryByText(/keypad outside/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/confirmation email/i)).not.toBeInTheDocument();
   });
 
   it("keeps an upcoming gate code's window in full colour", async () => {
