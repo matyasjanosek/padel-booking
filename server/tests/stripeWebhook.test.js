@@ -113,7 +113,7 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     expect(sendBookingConfirmationEmail).toHaveBeenCalledWith(confirmedBooking);
   });
 
-  it("still confirms the booking when the confirmation email fails to send", async () => {
+  it("still confirms the booking when the confirmation email fails to send, and logs the booking id and recipient", async () => {
     prisma.booking.findUnique.mockResolvedValue(pendingBooking());
     sendBookingConfirmationEmail.mockRejectedValue(new Error("Resend is down"));
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -121,7 +121,9 @@ describe("handleStripeEvent, payment_intent.succeeded", () => {
     await expect(handleStripeEvent(succeededEvent())).resolves.toBeUndefined();
 
     expect(prisma.$transaction).toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining(String(confirmedBooking.id)));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining(confirmedBooking.user.email));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("Resend is down"));
     consoleError.mockRestore();
   });
 
