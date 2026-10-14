@@ -19,13 +19,14 @@ function fakeResponse() {
   };
 }
 
-// 09:00 on this date is a real slot start (opening hour is 07:00, slots are
-// 60 minutes), and it is always in the future relative to these tests.
+// 2030-06-10 is a Monday, 2030-06-15 the Saturday after it. Both are always
+// in the future relative to these tests. 09:00 is a real unit start on
+// either day (opening hour is 07:00, units are 30 minutes).
 const VALID_START = "2030-06-10T09:00:00.000+02:00";
 
 describe("validateCreateBooking", () => {
-  it("normalises courtId and startTime and calls next for a valid request", () => {
-    const req = { body: { courtId: "1", startTime: VALID_START } };
+  it("normalises courtId, startTime and durationMinutes and calls next for a valid request", () => {
+    const req = { body: { courtId: "1", startTime: VALID_START, durationMinutes: "90" } };
     const next = vi.fn();
 
     validateCreateBooking(req, fakeResponse(), next);
@@ -33,64 +34,140 @@ describe("validateCreateBooking", () => {
     expect(next).toHaveBeenCalled();
     expect(req.body.courtId).toBe(1);
     expect(req.body.startTime).toBeInstanceOf(Date);
+    expect(req.body.durationMinutes).toBe(90);
   });
 
   it("rejects a missing court id", () => {
-    const req = { body: { startTime: VALID_START } };
+    const req = { body: { startTime: VALID_START, durationMinutes: 60 } };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 
   it("rejects a court id that is not a positive integer", () => {
-    const req = { body: { courtId: "0", startTime: VALID_START } };
+    const req = { body: { courtId: "0", startTime: VALID_START, durationMinutes: 60 } };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 
   it("rejects a start time that does not parse", () => {
-    const req = { body: { courtId: "1", startTime: "not a date" } };
+    const req = { body: { courtId: "1", startTime: "not a date", durationMinutes: 60 } };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 
   it("rejects a start time in the past", () => {
-    const req = { body: { courtId: "1", startTime: "2020-01-01T09:00:00.000+01:00" } };
+    const req = {
+      body: { courtId: "1", startTime: "2020-01-01T09:00:00.000+01:00", durationMinutes: 60 },
+    };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 
-  it("rejects a start time that does not fall on a slot boundary", () => {
-    const req = { body: { courtId: "1", startTime: "2030-06-10T09:15:00.000+02:00" } };
+  it("rejects a start time that does not fall on a unit boundary", () => {
+    const req = {
+      body: { courtId: "1", startTime: "2030-06-10T09:15:00.000+02:00", durationMinutes: 60 },
+    };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 
   it("rejects a start time outside the opening hours", () => {
-    const req = { body: { courtId: "1", startTime: "2030-06-10T23:00:00.000+02:00" } };
+    const req = {
+      body: { courtId: "1", startTime: "2030-06-10T23:00:00.000+02:00", durationMinutes: 60 },
+    };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
   });
 
+  it.each([undefined, 0, 30, 45, -60, "not a number"])(
+    "rejects an invalid duration: %p",
+    (durationMinutes) => {
+      const req = { body: { courtId: "1", startTime: VALID_START, durationMinutes } };
+      const res = fakeResponse();
+      validateCreateBooking(req, res, vi.fn());
+      expect(res.statusCode).toBe(400);
+    },
+  );
+
+  it.each([60, 90, 120, 150])("accepts every allowed duration: %i minutes", (durationMinutes) => {
+    const req = { body: { courtId: "1", startTime: VALID_START, durationMinutes } };
+    const next = vi.fn();
+    validateCreateBooking(req, fakeResponse(), next);
+    expect(next).toHaveBeenCalled();
+  });
+
+  it("rejects a booking that would run past closing time on a weekday", () => {
+    // 21:30 plus 90 minutes ends at 23:00, past the 22:00 weekday close.
+    const req = {
+      body: { courtId: "1", startTime: "2030-06-10T21:30:00.000+02:00", durationMinutes: 90 },
+    };
+    const res = fakeResponse();
+    validateCreateBooking(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/closing time/i);
+  });
+
+  it("accepts a booking that ends exactly at closing time on a weekday", () => {
+    // 21:00 plus 60 minutes ends exactly at 22:00.
+    const req = {
+      body: { courtId: "1", startTime: "2030-06-10T21:00:00.000+02:00", durationMinutes: 60 },
+    };
+    const next = vi.fn();
+    validateCreateBooking(req, fakeResponse(), next);
+    expect(next).toHaveBeenCalled();
+  });
+
+  it("rejects a booking that would run past closing time at the weekend", () => {
+    // 19:30 plus 60 minutes ends at 20:30, past the 20:00 weekend close,
+    // even though a weekday booking at the same time would be fine.
+    const req = {
+      body: { courtId: "1", startTime: "2030-06-15T19:30:00.000+02:00", durationMinutes: 60 },
+    };
+    const res = fakeResponse();
+    validateCreateBooking(req, res, vi.fn());
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/closing time/i);
+  });
+
+  it("accepts a booking that ends exactly at closing time at the weekend", () => {
+    // 19:00 plus 60 minutes ends exactly at 20:00.
+    const req = {
+      body: { courtId: "1", startTime: "2030-06-15T19:00:00.000+02:00", durationMinutes: 60 },
+    };
+    const next = vi.fn();
+    validateCreateBooking(req, fakeResponse(), next);
+    expect(next).toHaveBeenCalled();
+  });
+
   it("leaves couponCode undefined when none is given", () => {
-    const req = { body: { courtId: "1", startTime: VALID_START } };
+    const req = { body: { courtId: "1", startTime: VALID_START, durationMinutes: 60 } };
     validateCreateBooking(req, fakeResponse(), vi.fn());
     expect(req.body.couponCode).toBeUndefined();
   });
 
   it("trims a given coupon code", () => {
-    const req = { body: { courtId: "1", startTime: VALID_START, couponCode: "  summer10  " } };
+    const req = {
+      body: {
+        courtId: "1",
+        startTime: VALID_START,
+        durationMinutes: 60,
+        couponCode: "  summer10  ",
+      },
+    };
     validateCreateBooking(req, fakeResponse(), vi.fn());
     expect(req.body.couponCode).toBe("summer10");
   });
 
   it("rejects a coupon code that is not a string", () => {
-    const req = { body: { courtId: "1", startTime: VALID_START, couponCode: 123 } };
+    const req = {
+      body: { courtId: "1", startTime: VALID_START, durationMinutes: 60, couponCode: 123 },
+    };
     const res = fakeResponse();
     validateCreateBooking(req, res, vi.fn());
     expect(res.statusCode).toBe(400);
@@ -125,7 +202,7 @@ describe("validateRescheduleBooking", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("rejects a start time that does not fall on a slot boundary", () => {
+  it("rejects a start time that does not fall on a unit boundary", () => {
     const req = { body: { courtId: "1", startTime: "2030-06-10T09:15:00.000+02:00" } };
     const res = fakeResponse();
     validateRescheduleBooking(req, res, vi.fn());
