@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../src/db/client.js", () => ({
   prisma: {
     booking: { findUnique: vi.fn() },
-    payment: { create: vi.fn(), findUniqueOrThrow: vi.fn(), delete: vi.fn() },
+    payment: { findUnique: vi.fn(), create: vi.fn(), findUniqueOrThrow: vi.fn(), delete: vi.fn() },
   },
 }));
 
@@ -17,7 +17,7 @@ function p2002() {
 
 import { prisma } from "../src/db/client.js";
 import { getStripe } from "../src/stripeClient.js";
-import { createPaymentIntentForBooking } from "../src/services/payments.js";
+import { createPaymentIntentForBooking, releasePaymentIfPending } from "../src/services/payments.js";
 
 const booking = {
   id: 1,
@@ -215,5 +215,44 @@ describe("createPaymentIntentForBooking", () => {
     expect(stripe.paymentIntents.cancel).toHaveBeenCalledWith("pi_loser");
     expect(stripe.paymentIntents.retrieve).toHaveBeenCalledWith("pi_winner");
     expect(result.clientSecret).toBe("winner_secret");
+  });
+});
+
+describe("releasePaymentIfPending", () => {
+  const pendingPayment = { bookingId: 1, stripePaymentIntentId: "pi_1", status: "pending" };
+
+  it("does nothing when there is no payment, or it is not pending", async () => {
+    prisma.payment.findUnique.mockResolvedValue(null);
+
+    await releasePaymentIfPending(1);
+
+    expect(prisma.payment.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes the payment row once the Stripe cancel succeeds", async () => {
+    prisma.payment.findUnique.mockResolvedValue(pendingPayment);
+    const stripe = fakeStripe();
+    stripe.paymentIntents.cancel.mockResolvedValue({});
+    getStripe.mockReturnValue(stripe);
+
+    await releasePaymentIfPending(1);
+
+    expect(stripe.paymentIntents.cancel).toHaveBeenCalledWith("pi_1");
+    expect(prisma.payment.delete).toHaveBeenCalledWith({ where: { bookingId: 1 } });
+  });
+
+  it("keeps the payment row and logs the failure when the Stripe cancel throws", async () => {
+    prisma.payment.findUnique.mockResolvedValue(pendingPayment);
+    const stripe = fakeStripe();
+    stripe.paymentIntents.cancel.mockRejectedValue(new Error("intent already succeeded"));
+    getStripe.mockReturnValue(stripe);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await releasePaymentIfPending(1);
+
+    expect(prisma.payment.delete).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("pi_1"));
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("intent already succeeded"));
+    consoleError.mockRestore();
   });
 });
