@@ -17,7 +17,10 @@ function p2002() {
 
 import { prisma } from "../src/db/client.js";
 import { getStripe } from "../src/stripeClient.js";
-import { createPaymentIntentForBooking, releasePaymentIfPending } from "../src/services/payments.js";
+import {
+  createPaymentIntentForBooking,
+  releasePaymentIfPending,
+} from "../src/services/payments.js";
 
 const booking = {
   id: 1,
