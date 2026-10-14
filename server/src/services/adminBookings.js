@@ -1,11 +1,12 @@
 import { prisma } from "../db/client.js";
-import { SLOT_LENGTH_MINUTES } from "../config.js";
+import { UNIT_LENGTH_MINUTES } from "../config.js";
 import { formatPragueIso } from "../timezone.js";
-import { slotStartsForDay } from "./availability.js";
+import { slotStartsForDay, closingInstantFor } from "./availability.js";
 import { releasePaymentIfPending } from "./payments.js";
+import { courtSlotRowsFor } from "./courtSlots.js";
 import { scheduleLighting, cancelLighting } from "../hardware/index.js";
 
-const SLOT_LENGTH_MS = SLOT_LENGTH_MINUTES * 60 * 1000;
+const UNIT_LENGTH_MS = UNIT_LENGTH_MINUTES * 60 * 1000;
 
 export function listBookingsForAdmin({ status, courtId, date }) {
   const where = {};
@@ -19,7 +20,7 @@ export function listBookingsForAdmin({ status, courtId, date }) {
     const slotStarts = slotStartsForDay(date);
     where.startTime = {
       gte: new Date(slotStarts[0]),
-      lt: new Date(slotStarts[slotStarts.length - 1] + SLOT_LENGTH_MS),
+      lt: new Date(slotStarts[slotStarts.length - 1] + UNIT_LENGTH_MS),
     };
   }
 
@@ -30,11 +31,15 @@ export function listBookingsForAdmin({ status, courtId, date }) {
   });
 }
 
-// Only a reschedule, the court and the start time, not a change of status.
-// Pending or confirmed bookings can be moved; a cancelled or expired one
-// cannot, there is nothing left to reschedule. The same (court_id,
-// start_time) uniqueness the member facing flow relies on also guards this,
-// a conflicting target slot surfaces the same way, as a P2002.
+// Only a reschedule, the court and the start time, not a change of status
+// or of how long the booking is: it keeps its own original duration,
+// there is no duration control in the admin UI for this. Pending or
+// confirmed bookings can be moved; a cancelled or expired one cannot, there
+// is nothing left to reschedule. court_slots is what actually guards
+// against a conflicting target: the old units are freed and the new ones
+// inserted in the same transaction as the move, so a conflict there fails
+// the whole thing the same way a brand new booking's would, surfacing as a
+// P2002 or, under real concurrency, a P2034.
 //
 // A confirmed booking already has lighting scheduled for its old slot, see
 // stripeWebhook.js. Moving it without updating that would leave the lights
@@ -53,16 +58,26 @@ export async function rescheduleBooking(bookingId, { courtId, startTime }) {
     return { outcome: "not_reschedulable" };
   }
 
-  const endTime = new Date(startTime.getTime() + SLOT_LENGTH_MS);
+  const durationMs = booking.endTime.getTime() - booking.startTime.getTime();
+  const endTime = new Date(startTime.getTime() + durationMs);
+  if (endTime.getTime() > closingInstantFor(startTime).getTime()) {
+    return { outcome: "would_exceed_closing" };
+  }
+
   let updated;
   try {
-    updated = await prisma.booking.update({
-      where: { id: bookingId },
-      data: { courtId, startTime, endTime },
-      include: { user: true, court: true },
+    updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.booking.update({
+        where: { id: bookingId },
+        data: { courtId, startTime, endTime },
+        include: { user: true, court: true },
+      });
+      await tx.courtSlot.deleteMany({ where: { bookingId } });
+      await tx.courtSlot.createMany({ data: courtSlotRowsFor(result) });
+      return result;
     });
   } catch (error) {
-    if (error.code === "P2002") {
+    if (error.code === "P2002" || error.code === "P2034") {
       return { outcome: "slot_taken" };
     }
     if (error.code === "P2003") {
@@ -80,11 +95,13 @@ export async function rescheduleBooking(bookingId, { courtId, startTime }) {
 }
 
 // Same rule as the member facing cancelBooking: only pending or confirmed
-// can be cancelled, a pending payment is released, no ownership check since
-// an admin can act on any booking. A confirmed booking's lighting schedule
-// is cancelled too, for the same reason a reschedule cancels the old one:
-// left in place, the lights would still come on for a booking that no
-// longer exists. gateCode is cleared for the same reason, see cancelBooking.
+// can be cancelled, its court_slots rows are freed in the same transaction
+// as the status change, a pending payment is released, no ownership check
+// since an admin can act on any booking. A confirmed booking's lighting
+// schedule is cancelled too, for the same reason a reschedule cancels the
+// old one: left in place, the lights would still come on for a booking
+// that no longer exists. gateCode is cleared for the same reason, see
+// cancelBooking.
 export async function cancelBookingAsAdmin(bookingId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
   if (!booking) {
@@ -94,10 +111,14 @@ export async function cancelBookingAsAdmin(bookingId) {
     return { outcome: "not_cancellable" };
   }
 
-  const cancelled = await prisma.booking.update({
-    where: { id: bookingId },
-    data: { status: "cancelled", gateCode: null },
-    include: { user: true, court: true },
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const updated = await tx.booking.update({
+      where: { id: bookingId },
+      data: { status: "cancelled", gateCode: null },
+      include: { user: true, court: true },
+    });
+    await tx.courtSlot.deleteMany({ where: { bookingId } });
+    return updated;
   });
   await releasePaymentIfPending(bookingId);
   if (booking.status === "confirmed") {
