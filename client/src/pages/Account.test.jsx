@@ -143,6 +143,27 @@ describe("Account", () => {
     expect(cancelBooking).not.toHaveBeenCalled();
   });
 
+  it("warns that a paid booking will not be refunded before confirming", async () => {
+    fetchMyBookings.mockResolvedValue([confirmedUpcomingBooking]);
+    renderAccount();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+
+    expect(
+      await screen.findByText("This booking is paid and will not be refunded."),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the refund warning for a pending, unpaid booking", async () => {
+    fetchMyBookings.mockResolvedValue([pendingBooking]);
+    renderAccount();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel" }));
+    await screen.findByText("Cancel this booking?");
+
+    expect(screen.queryByText(/will not be refunded/i)).not.toBeInTheDocument();
+  });
+
   it("dismisses the confirmation without cancelling when the user says no", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking]);
     renderAccount();
