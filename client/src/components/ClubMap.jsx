@@ -69,7 +69,7 @@ export default function ClubMap() {
   }, []);
 
   return (
-    <div className="relative h-[220px] w-full max-w-xs overflow-hidden rounded-lg border border-border">
+    <div className="club-map relative h-[220px] w-full max-w-xs overflow-hidden rounded-lg border border-border">
       <div ref={containerRef} className="h-full w-full" />
       {(!loaded || failed) && <MapFallback />}
     </div>
