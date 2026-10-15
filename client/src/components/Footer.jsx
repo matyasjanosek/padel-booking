@@ -12,6 +12,29 @@ export default function Footer() {
           <p className="mt-2 text-sm text-text-muted">
             &copy; {new Date().getFullYear()} GEN PADEL Rožnov
           </p>
+          {/* CC BY 4.0 requires both attribution and stating that the work
+              was changed from the original. */}
+          <p className="mt-2 max-w-xs text-sm text-text-muted">
+            3D ball model{" "}
+            <a
+              href="https://sketchfab.com/3d-models/tennis-ball-8f1cbc19dc414ad89097eabe063ada88"
+              className="text-text hover:text-accent"
+            >
+              &quot;Tennis Ball&quot;
+            </a>{" "}
+            by{" "}
+            <a href="https://sketchfab.com/Arman.Abgaryan" className="text-text hover:text-accent">
+              Arman.Abgaryan
+            </a>
+            , licensed under{" "}
+            <a
+              href="http://creativecommons.org/licenses/by/4.0/"
+              className="text-text hover:text-accent"
+            >
+              CC BY 4.0
+            </a>
+            , simplified for the web.
+          </p>
         </div>
 
         <div className="grid gap-10 sm:grid-cols-3 sm:gap-12">
