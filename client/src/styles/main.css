@@ -84,18 +84,35 @@
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
+}
 
-  /* A line set like it is bolted to the fence, not typed: an inset shadow
-     standing in for a panel recessed into the surface, and a shadow on
-     each side of the letters standing in for a line pressed into metal. */
-  .engraved-sign {
-    box-shadow:
-      inset 0 2px 4px rgba(0, 0, 0, 0.5),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-    text-shadow:
-      0 1px 0 rgba(0, 0, 0, 0.6),
-      0 -1px 0 rgba(255, 255, 255, 0.08);
-  }
+/* Overrides Leaflet's own stylesheet, so these live outside the Tailwind
+   layers: unlayered rules always win over layered ones regardless of
+   selector specificity, and leaflet.css itself is loaded unlayered.
+   Plain OSM tiles are a light basemap. The filter targets only the tile
+   pane, Leaflet's own name for the layer the tile images sit in, so the
+   marker and the attribution control, both separate panes, are untouched.
+   invert flips light to dark, hue-rotate corrects the colour shift invert
+   causes (otherwise green space reads as magenta), brightness and
+   contrast pull it back from stark black and white. */
+.club-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+
+/* The attribution control is a light box by default, left unfiltered on
+   purpose; restyled here instead, to the surface colour the rest of the
+   site already uses. 4.78:1 for the muted text, 15.4:1 for the
+   OpenStreetMap link, both measured, not assumed. Matches Leaflet's own
+   selector specificity (.leaflet-container .leaflet-control-attribution,
+   two classes) plus .club-map, so it wins the tie regardless of which
+   stylesheet the bundler places last. */
+.club-map .leaflet-container .leaflet-control-attribution {
+  background: rgb(20 20 20 / 85%);
+  color: var(--color-text-muted);
+}
+
+.club-map .leaflet-control-attribution a {
+  color: var(--color-text);
 }
 
 /* Motion stays slow and subtle, and is removed when the visitor asks for that. */

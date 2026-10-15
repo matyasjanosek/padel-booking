@@ -1,101 +1,21 @@
+import { Suspense, lazy } from "react";
 import racketsPhoto from "../assets/photos/rackets-and-balls.jpg";
-import { ADDRESS_LINES, OPENING_HOURS } from "../constants/business.js";
+import { ADDRESS_LINES, DIRECTIONS_URL, OPENING_HOURS } from "../constants/business.js";
 
-// A schematic, not a map: the two courts, the fence around them, the gate
-// members let themselves in through, and where to park. Real proportions,
-// not a literal survey.
-function SitePlan() {
+// Leaflet is a real dependency, not a one-off chunk like the hero's 3D ball,
+// but it is still only needed on this page, so it stays a lazy import.
+const ClubMap = lazy(() => import("../components/ClubMap.jsx"));
+
+// Shown while the map's own chunk downloads, same markup as ClubMap's
+// internal fallback so there is no visible swap between the two.
+function MapPlaceholder() {
   return (
-    <svg
-      viewBox="0 0 320 220"
-      className="h-auto w-full max-w-xs"
-      role="img"
-      aria-label="Site plan: two courts side by side inside the fence, the gate on the near side, parking next to it."
-    >
-      <rect
-        x="4"
-        y="4"
-        width="312"
-        height="212"
-        rx="4"
-        fill="none"
-        stroke="var(--color-border)"
-        strokeWidth="2"
-        strokeDasharray="3 4"
-      />
-      <rect
-        x="24"
-        y="24"
-        width="126"
-        height="172"
-        rx="4"
-        fill="var(--color-surface)"
-        stroke="var(--color-accent)"
-        strokeWidth="1.5"
-      />
-      <rect
-        x="170"
-        y="24"
-        width="126"
-        height="172"
-        rx="4"
-        fill="var(--color-surface)"
-        stroke="var(--color-accent)"
-        strokeWidth="1.5"
-      />
-      <text
-        x="87"
-        y="115"
-        textAnchor="middle"
-        fill="var(--color-text)"
-        fontSize="14"
-        fontFamily="Poppins, sans-serif"
-        fontWeight="500"
-      >
-        Court 1
-      </text>
-      <text
-        x="233"
-        y="115"
-        textAnchor="middle"
-        fill="var(--color-text)"
-        fontSize="14"
-        fontFamily="Poppins, sans-serif"
-        fontWeight="500"
-      >
-        Court 2
-      </text>
-      {/* Gate: a break in the boundary, bottom centre. */}
-      <rect
-        x="146"
-        y="206"
-        width="28"
-        height="8"
-        fill="var(--color-bg)"
-        stroke="var(--color-accent)"
-        strokeWidth="2"
-      />
-      <text
-        x="160"
-        y="195"
-        textAnchor="middle"
-        fill="var(--color-text-muted)"
-        fontSize="11"
-        fontFamily="Poppins, sans-serif"
-      >
-        Gate
-      </text>
-      <text
-        x="160"
-        y="24"
-        textAnchor="middle"
-        fill="var(--color-text-muted)"
-        fontSize="11"
-        fontFamily="Poppins, sans-serif"
-      >
-        Parking next to the courts
-      </text>
-    </svg>
+    <div className="flex h-[220px] w-full max-w-xs flex-col justify-center gap-2 rounded-lg border border-border bg-surface p-4">
+      <p className="text-sm text-text">{ADDRESS_LINES.join(", ")}</p>
+      <a href={DIRECTIONS_URL} className="text-sm text-accent hover:underline">
+        Get directions
+      </a>
+    </div>
   );
 }
 
@@ -145,8 +65,13 @@ export default function Info() {
       </section>
 
       <section className="border-t border-border px-5 py-12 md:max-w-page md:py-16 md:pl-24 md:pr-10">
-        <div className="grid gap-10 md:grid-cols-[auto_1fr] md:items-start md:gap-16">
-          <SitePlan />
+        {/* A fixed column width, not auto: the old SVG had its own
+            intrinsic size from its viewBox for an auto column to pick up,
+            the map's div does not, and auto collapsed it to nothing. */}
+        <div className="grid gap-10 md:grid-cols-[20rem_1fr] md:items-start md:gap-16">
+          <Suspense fallback={<MapPlaceholder />}>
+            <ClubMap />
+          </Suspense>
           <div>
             <h2 className="mb-3 text-2xl">How to find us</h2>
             <p className="max-w-[60ch] text-text-muted">

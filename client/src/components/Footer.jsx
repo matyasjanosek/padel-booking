@@ -3,47 +3,73 @@ import { ADDRESS_LINES, CONTACT_EMAIL, OPENING_HOURS } from "../constants/busine
 export default function Footer() {
   return (
     <footer className="border-t border-border bg-surface px-5 py-12 sm:px-8 md:px-24">
-      <div className="grid max-w-[1200px] gap-10 sm:grid-cols-3">
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-text">Opening hours</h2>
-          <dl className="space-y-1 text-sm text-text-muted">
-            {OPENING_HOURS.map(({ label, hours }) => (
-              <div key={label} className="flex justify-between gap-4">
-                <dt>{label}</dt>
-                <dd className="tabular-nums text-text">{hours}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-text">Address</h2>
-          <p className="text-sm text-text-muted">
-            {ADDRESS_LINES.map((line) => (
-              <span key={line}>
-                {line}
-                <br />
-              </span>
-            ))}
+      <div className="max-w-[1200px] gap-10 sm:flex sm:items-start sm:justify-between">
+        {/* A fixed anchor, not a fourth peer competing with the info grid:
+            that is what made two dense columns and one short one read as
+            unbalanced before. */}
+        <div className="mb-10 sm:mb-0">
+          <p className="font-heading text-lg font-bold text-text">GEN PADEL</p>
+          <p className="mt-2 text-sm text-text-muted">
+            &copy; {new Date().getFullYear()} GEN PADEL Rožnov
+          </p>
+          {/* CC BY 4.0 requires both attribution and stating that the work
+              was changed from the original. */}
+          <p className="mt-2 max-w-xs text-sm text-text-muted">
+            3D ball model{" "}
+            <a
+              href="https://sketchfab.com/3d-models/tennis-ball-8f1cbc19dc414ad89097eabe063ada88"
+              className="text-text hover:text-accent"
+            >
+              &quot;Tennis Ball&quot;
+            </a>{" "}
+            by{" "}
+            <a href="https://sketchfab.com/Arman.Abgaryan" className="text-text hover:text-accent">
+              Arman.Abgaryan
+            </a>
+            , licensed under{" "}
+            <a
+              href="http://creativecommons.org/licenses/by/4.0/"
+              className="text-text hover:text-accent"
+            >
+              CC BY 4.0
+            </a>
+            , simplified for the web.
           </p>
         </div>
 
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-text">Contact</h2>
-          <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm text-text hover:text-accent">
-            {CONTACT_EMAIL}
-          </a>
+        <div className="grid gap-10 sm:grid-cols-3 sm:gap-12">
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-text">Opening hours</h2>
+            <dl className="space-y-1 text-sm text-text-muted">
+              {OPENING_HOURS.map(({ label, hours }) => (
+                <div key={label} className="flex justify-between gap-4">
+                  <dt>{label}</dt>
+                  <dd className="tabular-nums text-text">{hours}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-text">Address</h2>
+            <p className="text-sm text-text-muted">
+              {ADDRESS_LINES.map((line) => (
+                <span key={line}>
+                  {line}
+                  <br />
+                </span>
+              ))}
+            </p>
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-sm font-medium text-text">Contact</h2>
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-sm text-text hover:text-accent">
+              {CONTACT_EMAIL}
+            </a>
+          </div>
         </div>
       </div>
-
-      <p className="engraved-sign mt-10 max-w-[1200px] rounded-md border border-border bg-bg px-4 py-3 text-sm text-text">
-        There is no reception at the courts. Book online, and your gate code lets you in for your
-        booked time only.
-      </p>
-
-      <p className="mt-8 max-w-[1200px] text-xs text-text-muted">
-        &copy; {new Date().getFullYear()} GEN PADEL Rožnov
-      </p>
     </footer>
   );
 }
