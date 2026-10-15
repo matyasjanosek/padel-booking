@@ -60,6 +60,12 @@ const pastFreeSlot = {
   maxUnits: 4,
 };
 
+// The price sits in its own numeral treatment, the CZK unit in a nested
+// span, so it is never one plain text node to match against directly.
+function priceText() {
+  return screen.getByText("CZK").closest("p").textContent;
+}
+
 function renderBooking(initialEntries = ["/booking?date=2030-06-10"]) {
   render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -138,7 +144,7 @@ describe("Booking", () => {
 
     expect(await screen.findByText(/Court 1,/)).toBeInTheDocument();
     expect(screen.getByLabelText("Duration")).toHaveValue("60");
-    expect(screen.getByText("400 CZK")).toBeInTheDocument();
+    expect(priceText()).toBe("400 CZK");
   });
 
   it("offers every duration up to the longest that fits, and prices each one", async () => {
@@ -154,10 +160,10 @@ describe("Booking", () => {
 
     fireEvent.change(durationSelect, { target: { value: "120" } });
 
-    expect(screen.getByText("800 CZK")).toBeInTheDocument();
+    expect(priceText()).toBe("800 CZK");
   });
 
-  it("shows no duration options and disables confirming when nothing fits the chosen start", async () => {
+  it("marks a unit too short for any booking as Under 1h, focusable but not selectable", async () => {
     fetchAvailability.mockImplementation(({ courtId, date }) =>
       Promise.resolve({
         date,
@@ -169,11 +175,18 @@ describe("Booking", () => {
     );
     renderBooking();
 
-    fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
+    const tooShortButton = (await screen.findAllByText("Under 1h"))[0].closest("button");
 
-    expect(screen.getByText(/no booking length fits/i)).toBeInTheDocument();
+    // Reachable by keyboard, not the disabled attribute: a screen reader or
+    // keyboard user would otherwise skip straight over it and never learn
+    // why that time is unavailable.
+    expect(tooShortButton).not.toBeDisabled();
+    expect(tooShortButton).toHaveAttribute("aria-disabled", "true");
+    expect(tooShortButton).toHaveAccessibleName(/under one hour free/i);
+
+    fireEvent.click(tooShortButton);
+
     expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Confirm booking" })).toBeDisabled();
   });
 
   it("books the slot on confirm and goes to checkout", async () => {

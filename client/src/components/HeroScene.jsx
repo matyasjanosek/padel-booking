@@ -4,11 +4,15 @@ import { useRef, useMemo, useEffect, Suspense } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
-import ballUrl from "../assets/ball_compressed.glb?url";
+import ballUrl from "../assets/ball_optimized.glb?url";
 
-// The GLB is Draco compressed; the decoder files are served from
-// client/public/draco. Start fetching the 6.6 MB model as soon as this chunk
-// loads, before the canvas mounts.
+// ball_source_highpoly.glb (6.65 MB, 1.35 million vertices) is kept in the
+// repo but never loaded, see docs/decisions.md for why and how this file was
+// made from it: decimated to 54,805 vertices and its texture resized to
+// 512x512, both chosen because they are the point past which the fuzzy
+// silhouette starts visibly thinning. The GLB is Draco compressed; the
+// decoder files are served from client/public/draco. Start fetching the
+// model as soon as this chunk loads, before the canvas mounts.
 useGLTF.preload(ballUrl, "/draco/");
 
 function Ball() {
@@ -72,8 +76,14 @@ export default function HeroScene() {
       <Suspense fallback={null}>
         <Ball />
       </Suspense>
-      <ambientLight intensity={1.2} />
-      <directionalLight position={[5, 8, 10]} intensity={2.5} />
+      {/* Lit like a single floodlight at night, not an evenly lit product
+          shot: a low ambient so most of the ball falls into shadow, one
+          strong light raking down from above, and a dim rim light in the
+          same green as the ball itself (--color-accent) picking out the
+          shadow side instead of leaving it flat black. */}
+      <ambientLight intensity={0.28} />
+      <directionalLight position={[4, 9, 6]} intensity={3.4} />
+      <directionalLight position={[-6, -2, -4]} intensity={0.7} color="#a6e22e" />
     </Canvas>
   );
 }

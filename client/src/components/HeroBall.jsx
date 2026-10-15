@@ -28,13 +28,25 @@ export default function HeroBall() {
 
   return (
     <div className="relative hidden md:block md:h-[520px]" aria-hidden="true">
-      {show3d && (
-        <div className="absolute inset-0">
+      {/* The ball's own floodlight: a pool of light it sits in, not a flat
+          background. Accent-coloured at low opacity, nothing new, the same
+          green the ball itself is lit with in the scene below. */}
+      <div
+        className="hero-glow pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 55%, rgba(166,226,46,0.16), rgba(166,226,46,0.04) 38%, transparent 68%)",
+        }}
+      />
+      <div className="absolute inset-0">
+        {show3d ? (
           <Suspense fallback={<BallPlaceholder />}>
             <HeroScene />
           </Suspense>
-        </div>
-      )}
+        ) : (
+          <BallPlaceholder />
+        )}
+      </div>
     </div>
   );
 }
