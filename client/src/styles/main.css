@@ -84,18 +84,6 @@
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
-
-  /* A line set like it is bolted to the fence, not typed: an inset shadow
-     standing in for a panel recessed into the surface, and a shadow on
-     each side of the letters standing in for a line pressed into metal. */
-  .engraved-sign {
-    box-shadow:
-      inset 0 2px 4px rgba(0, 0, 0, 0.5),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-    text-shadow:
-      0 1px 0 rgba(0, 0, 0, 0.6),
-      0 -1px 0 rgba(255, 255, 255, 0.08);
-  }
 }
 
 /* Motion stays slow and subtle, and is removed when the visitor asks for that. */

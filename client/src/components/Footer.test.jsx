@@ -14,12 +14,6 @@ describe("Footer", () => {
     );
   });
 
-  it("states there is no reception and how the gate works", () => {
-    render(<Footer />);
-    expect(screen.getByText(/no reception at the courts/i)).toBeInTheDocument();
-    expect(screen.getByText(/gate code lets you in/i)).toBeInTheDocument();
-  });
-
   it("shows the legal line with the current year", () => {
     render(<Footer />);
     expect(screen.getByText(`© ${new Date().getFullYear()} GEN PADEL Rožnov`)).toBeInTheDocument();
