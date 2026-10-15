@@ -77,11 +77,7 @@ export default function Register() {
 
         {error && <p className="text-sm text-danger">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-2 inline-block self-start rounded-full border border-border px-7 py-3 font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
-        >
+        <button type="submit" disabled={submitting} className="btn-primary mt-2 self-start">
           {submitting ? "Creating account..." : "Create account"}
         </button>
       </form>

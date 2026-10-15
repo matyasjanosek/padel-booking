@@ -6,10 +6,7 @@ export default function ContinueWithGoogle() {
         <span className="text-sm">or</span>
         <span className="h-px flex-1 bg-border" />
       </div>
-      <a
-        href="/api/auth/google"
-        className="mt-6 inline-block rounded-full border border-border px-7 py-3 text-center font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
-      >
+      <a href="/api/auth/google" className="btn-secondary mt-6">
         Continue with Google
       </a>
     </div>
