@@ -36,6 +36,12 @@ const pendingBooking = {
   price: 400,
 };
 
+// The price sits in its own numeral treatment, the CZK unit in a nested
+// span, so it is never one plain text node to match against directly.
+function priceText() {
+  return screen.getByText("CZK").closest("p").textContent;
+}
+
 function renderCheckout(bookingId = 1) {
   render(
     <MemoryRouter initialEntries={[`/booking/${bookingId}/checkout`]}>
@@ -84,7 +90,7 @@ describe("Checkout", () => {
     expect(
       await screen.findByText(/Court 1, Mon, 10 Jun 2030, 09:00 to 10:00/),
     ).toBeInTheDocument();
-    expect(screen.getByText("400 CZK")).toBeInTheDocument();
+    expect(priceText()).toBe("400 CZK");
     expect(createPaymentIntent).toHaveBeenCalledWith(1);
     expect(
       screen.getByText("Once this is paid, we will email you the gate code too."),
@@ -96,8 +102,8 @@ describe("Checkout", () => {
     createPaymentIntent.mockReturnValue(new Promise(() => {}));
     renderCheckout();
 
-    expect(await screen.findByText("360 CZK")).toBeInTheDocument();
-    expect(screen.getByText(/coupon summer10 applied/i)).toBeInTheDocument();
+    await screen.findByText(/coupon summer10 applied/i);
+    expect(priceText()).toBe("360 CZK");
   });
 
   it("shows no coupon note when none was applied", async () => {
@@ -105,7 +111,8 @@ describe("Checkout", () => {
     createPaymentIntent.mockReturnValue(new Promise(() => {}));
     renderCheckout();
 
-    await screen.findByText("400 CZK");
+    await screen.findByText(/Court 1,/);
+    expect(priceText()).toBe("400 CZK");
     expect(screen.queryByText(/coupon/i)).not.toBeInTheDocument();
   });
 
@@ -121,6 +128,31 @@ describe("Checkout", () => {
 
     expect(await screen.findByTestId("payment-element")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pay now" })).toBeInTheDocument();
+  });
+
+  it("shows the refund warning directly above Pay now, in the exact approved wording", async () => {
+    fetchMyBookings.mockResolvedValue([pendingBooking]);
+    createPaymentIntent.mockResolvedValue({
+      clientSecret: "pi_1_secret",
+      publishableKey: "pk_test_example",
+      amount: 400,
+      currency: "czk",
+    });
+    renderCheckout();
+
+    const payButton = await screen.findByRole("button", { name: "Pay now" });
+    const warning = screen.getByText(
+      "Once you pay, this booking cannot be refunded, even if you cancel it afterwards.",
+    );
+
+    // Directly above the button: the very next element in the form.
+    expect(warning.closest("div").nextElementSibling).toBe(payButton);
+    // A solid fill, not small grey print: bg-danger needs dark text for
+    // real contrast (2.31:1 with the light text colour, 7.16:1 with the
+    // dark one), measured, not assumed from the plan's own wording.
+    expect(warning.closest("div").className).toContain("bg-danger");
+    expect(warning.className).toContain("text-bg");
+    expect(payButton.className).toContain("btn-primary");
   });
 
   it("shows a clear message instead of a broken payment form when a payment is already in progress", async () => {
@@ -154,6 +186,11 @@ describe("Checkout", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Pay now" }));
 
     expect(await screen.findByText("Your card was declined.")).toBeInTheDocument();
+    // Stripe's own message is specific to the failure; it never says what to
+    // do about it on its own, so this is added alongside it, not instead of it.
+    expect(
+      screen.getByText(/check your card details and try again, or use a different card/i),
+    ).toBeInTheDocument();
     expect(confirmPayment).toHaveBeenCalledWith({
       elements: {},
       confirmParams: { return_url: `${window.location.origin}/account` },
