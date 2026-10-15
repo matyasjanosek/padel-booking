@@ -1,6 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Info from "./Info.jsx";
+
+// The real ClubMap talks to Leaflet and the network; that is ClubMap's own
+// test's job, not Info's. Here we only need to know Info renders it.
+vi.mock("../components/ClubMap.jsx", () => ({
+  default: () => <div>the map</div>,
+}));
 
 describe("Info", () => {
   it("renders the page heading and the sections", () => {
@@ -33,8 +39,9 @@ describe("Info", () => {
     expect(photo.alt).not.toMatch(/padel court photo/i);
   });
 
-  it("shows the site plan with an accessible description", () => {
+  it("shows the club map and the real address", async () => {
     render(<Info />);
-    expect(screen.getByRole("img", { name: /site plan.*two courts.*gate/i })).toBeInTheDocument();
+    expect(await screen.findByText("the map")).toBeInTheDocument();
+    expect(screen.getByText(/Pod strání 2268/)).toBeInTheDocument();
   });
 });
