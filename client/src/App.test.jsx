@@ -42,4 +42,14 @@ describe("App", () => {
     const link = await screen.findByRole("link", { name: "Court 1" });
     expect(link).toHaveAttribute("href", "/booking?court=1");
   });
+
+  it("shows the sunset photo band, sized to prevent layout shift, lazy loaded, with real alt text", async () => {
+    renderApp();
+    const photo = screen.getByRole("img", { name: /courts at sunset/i });
+    expect(photo).toHaveAttribute("width", "1200");
+    expect(photo).toHaveAttribute("height", "799");
+    expect(photo).toHaveAttribute("loading", "lazy");
+    expect(photo.alt).not.toMatch(/padel court photo/i);
+    expect(screen.getByRole("heading", { name: "Play on, after dark" })).toBeInTheDocument();
+  });
 });
