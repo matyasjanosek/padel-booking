@@ -92,7 +92,7 @@ export default function Account() {
                 <p className="font-medium text-text">
                   {courtName(booking.courtId)}, {formatSlot(booking.startTime, booking.endTime)}
                 </p>
-                <p className="text-sm text-text-muted">
+                <p className="text-sm text-text">
                   {STATUS_LABELS[booking.status]}, {booking.price} CZK
                 </p>
                 {booking.status === "confirmed" && booking.gateCode && (
@@ -104,10 +104,10 @@ export default function Account() {
                       {formatTime(booking.gateCodeValidFrom)} until{" "}
                       {formatTime(booking.gateCodeValidUntil)}
                     </p>
-                    <p className="text-sm text-text-muted">
+                    <p className="text-sm text-text">
                       Enter this code on the keypad outside. The gate always opens from the inside.
                     </p>
-                    <p className="text-sm text-text-muted">
+                    <p className="text-sm text-text">
                       You can also find this code in your confirmation email.
                     </p>
                   </>
@@ -128,7 +128,7 @@ export default function Account() {
                     <div className="flex flex-col items-end gap-2">
                       <span className="text-sm text-text-muted">Cancel this booking?</span>
                       {booking.status === "confirmed" && (
-                        <span className="text-sm text-text-muted">
+                        <span className="text-sm font-medium text-danger">
                           This booking is paid and will not be refunded.
                         </span>
                       )}
