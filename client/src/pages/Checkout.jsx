@@ -20,6 +20,16 @@ function getStripePromise(publishableKey) {
   return stripePromise;
 }
 
+// A loading, blocked or error state, set apart as its own panel rather than
+// a bare sentence sitting on the page.
+function StatusPanel({ children }) {
+  return (
+    <div className="max-w-md rounded-lg border border-border bg-surface p-5 text-text-muted">
+      {children}
+    </div>
+  );
+}
+
 // Card details are entered straight into Stripe's own Payment Element and
 // never pass through this app; confirming just hands the elements instance
 // to Stripe. Not confirming the booking here on purpose, the webhook in the
@@ -55,12 +65,25 @@ function PayButton() {
   return (
     <form onSubmit={handleSubmit} className="mt-6 flex max-w-sm flex-col gap-5">
       <PaymentElement />
-      {error && <p className="text-sm text-danger">{error}</p>}
-      <button
-        type="submit"
-        disabled={!stripe || submitting}
-        className="mt-2 inline-block self-start rounded-full border border-border px-7 py-3 font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
-      >
+
+      {error && (
+        <div className="rounded-lg border border-danger/60 bg-danger/10 p-4">
+          <p className="font-medium text-text">{error}</p>
+          <p className="mt-1 text-sm text-text">
+            Check your card details and try again, or use a different card.
+          </p>
+        </div>
+      )}
+
+      {/* The one bold element on this page: not small grey print, not an
+          icon standing in for the words. */}
+      <div className="rounded-lg bg-danger px-5 py-4">
+        <p className="font-bold text-bg">
+          Once you pay, this booking cannot be refunded, even if you cancel it afterwards.
+        </p>
+      </div>
+
+      <button type="submit" disabled={!stripe || submitting} className="btn-primary self-start">
         {submitting ? "Processing..." : "Pay now"}
       </button>
     </form>
@@ -104,24 +127,26 @@ export default function Checkout() {
     <section className="px-5 py-12 md:max-w-page md:pl-24 md:pr-10 md:py-16">
       <h1 className="mb-4 text-4xl tracking-tight md:text-5xl">Checkout</h1>
 
-      {error && <p className="max-w-sm text-sm text-danger">{error}</p>}
+      {error && <StatusPanel>{error}</StatusPanel>}
 
-      {!error && booking === null && <p className="text-text-muted">Loading your booking...</p>}
+      {!error && booking === null && <StatusPanel>Loading your booking...</StatusPanel>}
 
       {booking && booking.status !== "pending" && (
-        <p className="text-text-muted">This booking cannot be paid for.</p>
+        <StatusPanel>This booking cannot be paid for.</StatusPanel>
       )}
 
       {booking && booking.status === "pending" && (
         <>
-          <p className="max-w-sm text-text-muted">
+          <p className="max-w-sm text-text">
             {courtName(booking.courtId)}, {formatSlot(booking.startTime, booking.endTime)}
           </p>
-          <p className="mt-1 font-medium text-text">{booking.price} CZK</p>
+          <p className="numeral mt-2 text-3xl text-accent">
+            {booking.price} <span className="text-sm text-text-muted">CZK</span>
+          </p>
           {booking.couponCode && (
             <p className="mt-1 text-sm text-accent">Coupon {booking.couponCode} applied</p>
           )}
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-2 text-sm text-text">
             Once this is paid, we will email you the gate code too.
           </p>
 
