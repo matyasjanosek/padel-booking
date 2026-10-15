@@ -110,7 +110,23 @@ describe("Account", () => {
     expect(
       await screen.findByText(/Court 1, Mon, 10 Jun 2030, 09:00 to 10:00/),
     ).toBeInTheDocument();
-    expect(screen.getByText("Pending, 400 CZK")).toBeInTheDocument();
+    const status = screen.getByText("Pending");
+    expect(status.closest("p").textContent).toBe("Pending · 400 CZK");
+  });
+
+  it("marks the status with a word, not colour alone: Confirmed is bold and accent, Pending bold but not accent, Cancelled and Expired muted", async () => {
+    fetchMyBookings.mockResolvedValue([
+      pendingBooking,
+      cancelledBooking,
+      confirmedUpcomingBooking,
+      { ...pendingBooking, id: 5, status: "expired" },
+    ]);
+    renderAccount();
+
+    expect((await screen.findByText("Pending")).className).toBe("font-semibold text-text");
+    expect(screen.getByText("Cancelled").className).toBe("text-text-muted");
+    expect(screen.getByText("Confirmed").className).toBe("font-semibold text-accent");
+    expect(screen.getByText("Expired").className).toBe("text-text-muted");
   });
 
   it("shows a Cancel button for a pending booking but not for a cancelled one", async () => {
@@ -185,7 +201,8 @@ describe("Account", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Yes, cancel" }));
 
     expect(cancelBooking).toHaveBeenCalledWith(1);
-    expect(await screen.findByText("Cancelled, 400 CZK")).toBeInTheDocument();
+    const status = await screen.findByText("Cancelled");
+    expect(status.closest("p").textContent).toBe("Cancelled · 400 CZK");
     expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
   });
 
@@ -200,42 +217,50 @@ describe("Account", () => {
     expect(await screen.findByText("This booking cannot be cancelled")).toBeInTheDocument();
   });
 
-  it("shows the gate code and its window for a confirmed booking", async () => {
+  it("shows the gate code as the prominent element, with its window as quiet support text", async () => {
     fetchMyBookings.mockResolvedValue([confirmedUpcomingBooking]);
     renderAccount();
 
-    expect(
-      await screen.findByText("Code 482913, works at the gate from 17:40 until 18:45"),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/enter this code on the keypad outside/i)).toBeInTheDocument();
-    expect(
-      screen.getByText("You can also find this code in your confirmation email."),
-    ).toBeInTheDocument();
+    const code = await screen.findByText("482913");
+    expect(code.className).toContain("numeral");
+    expect(code.className).toContain("text-2xl");
+    expect(screen.getByText("Works at the gate from 17:40 until 18:45.")).toBeInTheDocument();
+  });
+
+  it("keeps the gate code's own help text quiet, not full contrast", async () => {
+    fetchMyBookings.mockResolvedValue([confirmedUpcomingBooking]);
+    renderAccount();
+
+    await screen.findByText("482913");
+    const howTo = screen.getByText(/enter this code on the keypad outside/i);
+    const emailNote = screen.getByText("You can also find this code in your confirmation email.");
+    expect(howTo.className).toContain("text-text-muted");
+    expect(emailNote.className).toContain("text-text-muted");
   });
 
   it("never shows a gate code for a pending or a cancelled booking", async () => {
     fetchMyBookings.mockResolvedValue([pendingBooking, cancelledBooking]);
     renderAccount();
 
-    await screen.findByText("Pending, 400 CZK");
-    expect(screen.queryByText(/^Code /)).not.toBeInTheDocument();
+    await screen.findByText("Pending");
+    expect(screen.queryByText(/^\d{6}$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/keypad outside/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/confirmation email/i)).not.toBeInTheDocument();
   });
 
-  it("keeps an upcoming gate code's window in full colour", async () => {
+  it("keeps an upcoming gate code in accent green", async () => {
     fetchMyBookings.mockResolvedValue([confirmedUpcomingBooking]);
     renderAccount();
 
-    const codeLine = await screen.findByText(/^Code 482913/);
-    expect(codeLine.className).toBe("text-sm text-text");
+    const code = await screen.findByText("482913");
+    expect(code.className).toBe("numeral text-2xl text-accent");
   });
 
   it("mutes a past booking's gate code instead of hiding it", async () => {
     fetchMyBookings.mockResolvedValue([confirmedPastBooking]);
     renderAccount();
 
-    const codeLine = await screen.findByText(/^Code 111222/);
-    expect(codeLine.className).toBe("text-sm text-text-muted");
+    const code = await screen.findByText("111222");
+    expect(code.className).toBe("numeral text-2xl text-text-muted");
   });
 });

@@ -12,6 +12,18 @@ const STATUS_LABELS = {
   expired: "Expired",
 };
 
+// Colour is reinforcement, not the signal: the word itself already says
+// what the status is, for anyone who cannot tell these colours apart.
+// Confirmed is accent green, the one genuinely "go" state; pending stays
+// bold but not green, since it is not paid yet; cancelled and expired are
+// muted, nothing left to act on.
+const STATUS_CLASSES = {
+  pending: "font-semibold text-text",
+  confirmed: "font-semibold text-accent",
+  cancelled: "text-text-muted",
+  expired: "text-text-muted",
+};
+
 const CANCELLABLE_STATUSES = ["pending", "confirmed"];
 
 // Past its own validity window, not just the booking's end time, the two
@@ -92,25 +104,30 @@ export default function Account() {
                 <p className="font-medium text-text">
                   {courtName(booking.courtId)}, {formatSlot(booking.startTime, booking.endTime)}
                 </p>
-                <p className="text-sm text-text">
-                  {STATUS_LABELS[booking.status]}, {booking.price} CZK
+                <p className="text-sm">
+                  <span className={STATUS_CLASSES[booking.status]}>
+                    {STATUS_LABELS[booking.status]}
+                  </span>
+                  <span className="text-text-muted"> · {booking.price} CZK</span>
                 </p>
                 {booking.status === "confirmed" && booking.gateCode && (
-                  <>
+                  <div className="mt-2">
                     <p
-                      className={`text-sm ${isGateCodePast(booking) ? "text-text-muted" : "text-text"}`}
+                      className={`numeral text-2xl ${isGateCodePast(booking) ? "text-text-muted" : "text-accent"}`}
                     >
-                      Code {booking.gateCode}, works at the gate from{" "}
-                      {formatTime(booking.gateCodeValidFrom)} until{" "}
-                      {formatTime(booking.gateCodeValidUntil)}
+                      {booking.gateCode}
                     </p>
-                    <p className="text-sm text-text">
+                    <p className="text-sm text-text-muted">
+                      Works at the gate from {formatTime(booking.gateCodeValidFrom)} until{" "}
+                      {formatTime(booking.gateCodeValidUntil)}.
+                    </p>
+                    <p className="mt-1 text-sm text-text-muted">
                       Enter this code on the keypad outside. The gate always opens from the inside.
                     </p>
-                    <p className="text-sm text-text">
+                    <p className="text-sm text-text-muted">
                       You can also find this code in your confirmation email.
                     </p>
-                  </>
+                  </div>
                 )}
               </div>
 
