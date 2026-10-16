@@ -52,9 +52,9 @@ async function handlePaymentSucceeded(event) {
   ]);
 
   // The simulation is synchronous and in memory, it cannot fail the way a
-  // real network call to Resend below can, so there is nothing to guard
-  // against yet. A real hardware implementation that can fail would be the
-  // point to revisit this.
+  // real network call to Resend below can, so there is no error here to
+  // guard against. A real hardware integration is a different piece of
+  // code with its own failure modes, not a later addition to this one.
   scheduleLighting({
     courtId: confirmedBooking.courtId,
     startTime: confirmedBooking.startTime,
