@@ -29,7 +29,6 @@ createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* No navigation on purpose, a TV in fullscreen at the court. */}
           <Route path="/tournaments/:id/display" element={<TournamentDisplay />} />
           <Route element={<Layout />}>
             <Route path="/" element={<App />} />

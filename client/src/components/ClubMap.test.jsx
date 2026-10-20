@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import ClubMap from "./ClubMap.jsx";
 
-// ClubMap's own job is deciding when to show the map versus the fallback;
-// Leaflet's own tile fetching is not something to re-test here, so it is
-// replaced with a fake layer whose "tileload" and "tileerror" handlers the
-// tests can call directly.
 const tileHandlers = {};
 const tileLayer = {
   addTo: vi.fn(() => tileLayer),

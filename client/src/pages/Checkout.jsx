@@ -7,21 +7,12 @@ import { fetchCourts } from "../api/courts.js";
 import { createPaymentIntent } from "../api/payments.js";
 import { formatSlot } from "../utils/formatSlot.js";
 
-// loadStripe injects Stripe's own script tag and must only run once per
-// page load, not once per render. A useMemo keyed on the checkout object
-// was not enough: that object gets a new identity every time the payment
-// intent is fetched (for example going back to checkout and arriving
-// again), which called loadStripe a second time and changed the stripe
-// prop Elements was already given, which Stripe.js does not allow. A
-// module scope singleton means this really only runs once.
 let stripePromise;
 function getStripePromise(publishableKey) {
   stripePromise ??= loadStripe(publishableKey);
   return stripePromise;
 }
 
-// A loading, blocked or error state, set apart as its own panel rather than
-// a bare sentence sitting on the page.
 function StatusPanel({ children }) {
   return (
     <div className="max-w-md rounded-lg border border-border bg-surface p-5 text-text-muted">
@@ -30,10 +21,6 @@ function StatusPanel({ children }) {
   );
 }
 
-// Card details are entered straight into Stripe's own Payment Element and
-// never pass through this app; confirming just hands the elements instance
-// to Stripe. Not confirming the booking here on purpose, the webhook in the
-// next step is what turns a successful payment into a confirmed booking.
 function PayButton() {
   const stripe = useStripe();
   const elements = useElements();
@@ -48,9 +35,6 @@ function PayButton() {
     setSubmitting(true);
     setError("");
 
-    // On success the browser is redirected to return_url and this code
-    // never runs again. confirmPayment only returns here when something
-    // went wrong immediately, for example a declined card.
     const { error: confirmError } = await stripe.confirmPayment({
       elements,
       confirmParams: { return_url: `${window.location.origin}/account` },
@@ -75,8 +59,6 @@ function PayButton() {
         </div>
       )}
 
-      {/* The one bold element on this page: not small grey print, not an
-          icon standing in for the words. */}
       <div className="rounded-lg bg-danger px-5 py-4">
         <p className="font-bold text-bg">
           Once you pay, this booking cannot be refunded, even if you cancel it afterwards.
@@ -96,7 +78,7 @@ export default function Checkout() {
 
   const [courts, setCourts] = useState([]);
   const [booking, setBooking] = useState(null);
-  const [checkout, setCheckout] = useState(null); // { clientSecret, publishableKey }
+  const [checkout, setCheckout] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {

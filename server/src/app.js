@@ -15,17 +15,10 @@ import { adminUsersRouter } from "./routes/adminUsers.js";
 import { adminCouponsRouter } from "./routes/adminCoupons.js";
 import { contactRouter } from "./routes/contact.js";
 
-// The client's built files, one directory up from server/. In production
-// this is the Vite build, created by "npm run build" at the repo root
-// before the server starts. In development the client is served by Vite's
-// own dev server instead, so this directory does not exist and the static
-// middleware below simply finds nothing to serve, harmlessly.
 const CLIENT_DIST = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../client/dist");
 
 export function createApp() {
   const app = express();
-  // Mounted before express.json(): the webhook route needs the raw body to
-  // verify Stripe's signature, and reads it itself, see stripeWebhook.js.
   app.use("/api", stripeWebhookRouter);
   app.use(express.json());
   app.use("/api", healthRouter);
@@ -41,11 +34,6 @@ export function createApp() {
   app.use("/api", adminCouponsRouter);
   app.use("/api", contactRouter);
 
-  // Everything that is not an API call is the client's single page app:
-  // real static files first (JS, CSS, images), then index.html for any
-  // other path, so React Router's own routes work on a hard refresh too.
-  // An unmatched /api/* path still falls through to Express's own 404
-  // instead of getting index.html.
   app.use(express.static(CLIENT_DIST));
   app.use((req, res, next) => {
     if (req.path.startsWith("/api/")) {

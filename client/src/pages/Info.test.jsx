@@ -2,8 +2,6 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Info from "./Info.jsx";
 
-// The real ClubMap talks to Leaflet and the network; that is ClubMap's own
-// test's job, not Info's. Here we only need to know Info renders it.
 vi.mock("../components/ClubMap.jsx", () => ({
   default: () => <div>the map</div>,
 }));

@@ -1,62 +1,34 @@
-// Bookable window, the same for every court. Hours are Europe/Prague wall
-// clock time, see src/timezone.js. Both the opening and the closing hour
-// depend on the day: the centre opens later and closes earlier at the
-// weekend than on a weekday.
+// Opening hours
 export const OPENING_HOUR_WEEKDAY = 7;
 export const OPENING_HOUR_WEEKEND = 8;
 export const CLOSING_HOUR_WEEKDAY = 22;
 export const CLOSING_HOUR_WEEKEND = 20;
 
-// Every booking is a whole number of these units, the court's own grid is
-// drawn to this granularity too. A booking is at least two units long
-// (MIN_BOOKING_MINUTES), and any whole number of units longer than that.
+// Booking length
 export const UNIT_LENGTH_MINUTES = 30;
 export const MIN_BOOKING_MINUTES = 60;
 
-// How long a pending booking holds its slot before it is free again, and the
-// price for one hour of court time before any coupon discount. The price for
-// a booking is this times its length in hours, computed on the server.
+// Hold and price
 export const HOLD_MINUTES = 10;
 export const PRICE_PER_HOUR_CZK = 400;
 
-// How often the background job sweeps for pending bookings whose hold has
-// passed and marks them expired.
+// Booking exp time
 export const HOLD_EXPIRY_INTERVAL_SECONDS = 60;
 
-// How many digits in a gate code, generated when a booking is confirmed.
+// Code
 export const GATE_CODE_DIGITS = 6;
-
-// The gate code opens the gate from outside only, there is no code needed to
-// leave. Its window covers the whole booking, from a short margin before the
-// start to a shorter one after the end, so it covers arriving a little early
-// and running a little late, however long the booking is. It has no usage
-// limit inside that window, every player on the court lets themselves in
-// separately.
 export const GATE_CODE_VALID_BEFORE_MINUTES = 20;
 export const GATE_CODE_VALID_AFTER_END_MINUTES = 15;
 
-// Resend's own sandbox sender, used in development until a real domain is
-// verified with Resend.
+// Resend
 export const EMAIL_FROM_ADDRESS = "onboarding@resend.dev";
 
-// Where a contact form message is sent, the same address the Contact page
-// itself shows.
 export const CONTACT_RECIPIENT_ADDRESS = "info@genpadel.cz";
 
-// Rate limiting for the public contact form, see
-// middleware/rateLimitContact.js. Every submission counts, not only failed
-// ones, this is about limiting how much mail one visitor can trigger, not
-// about guessing anything.
+// Rate limiting form
 export const CONTACT_RATE_LIMIT_MAX_MESSAGES = 3;
 export const CONTACT_RATE_LIMIT_WINDOW_MINUTES = 15;
 
-// Rate limiting for the public gate code validation endpoint, see
-// middleware/rateLimitGate.js. The gate keypad is one physical device, so
-// every real visitor shares its IP address, only failed attempts count
-// against this, never a correct code. Strict enough that brute forcing a 6
-// digit code within even its shortest possible validity window, a one hour
-// booking's own 95 minutes (the two margins above either side of it), is not
-// practical: a few dozen guesses at most against a million possible codes. A
-// longer booking only widens its own window, never makes guessing it faster.
+// Rate limiting gate
 export const GATE_RATE_LIMIT_MAX_FAILURES = 5;
 export const GATE_RATE_LIMIT_WINDOW_MINUTES = 15;

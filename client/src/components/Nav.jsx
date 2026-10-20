@@ -8,8 +8,6 @@ const links = [
   { to: "/contact", label: "Contact" },
 ];
 
-// Active is never colour alone: a heavier weight and an underline carry it
-// too, and aria-current tells a screen reader the same thing.
 function linkClassName({ isActive }) {
   return `font-medium underline-offset-4 ${
     isActive ? "font-semibold text-text underline" : "text-text-muted hover:text-text"
@@ -17,8 +15,6 @@ function linkClassName({ isActive }) {
 }
 
 function MenuIcon({ open }) {
-  // A plain X when open, three bars when closed. Decorative, the button's
-  // own accessible name carries the meaning.
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
       {open ? (
@@ -55,9 +51,6 @@ export default function Nav() {
     setMenuOpen(false);
   }, [location.pathname]);
 
-  // Focus trap while open: Escape closes it, Tab cycles only through the
-  // panel's own focusable elements instead of leaving it, and focus goes
-  // to the first one as soon as it opens.
   useEffect(() => {
     if (!menuOpen) return;
 
@@ -86,8 +79,6 @@ export default function Nav() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [menuOpen]);
 
-  // Closing, whichever way it happens, always hands focus back to the
-  // button that opened it, never leaves it stranded.
   useEffect(() => {
     if (wasOpenRef.current && !menuOpen) {
       toggleRef.current?.focus();
@@ -143,7 +134,7 @@ export default function Nav() {
           </NavLink>
         </nav>
 
-        {/* Mobile: a single thumb-sized toggle, everything else in the panel. */}
+        {/* Mobile: a single thumb-sized toggle */}
         <button
           ref={toggleRef}
           type="button"

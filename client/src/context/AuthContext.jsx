@@ -6,8 +6,6 @@ import {
   fetchMe,
 } from "../api/auth.js";
 
-// The default value applies when a component reads this outside <AuthProvider>,
-// so a missing provider fails quiet instead of crashing on a null context.
 const AuthContext = createContext({
   user: null,
   loading: true,

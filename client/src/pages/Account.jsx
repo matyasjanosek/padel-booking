@@ -12,11 +12,6 @@ const STATUS_LABELS = {
   expired: "Expired",
 };
 
-// Colour is reinforcement, not the signal: the word itself already says
-// what the status is, for anyone who cannot tell these colours apart.
-// Confirmed is accent green, the one genuinely "go" state; pending stays
-// bold but not green, since it is not paid yet; cancelled and expired are
-// muted, nothing left to act on.
 const STATUS_CLASSES = {
   pending: "font-semibold text-text",
   confirmed: "font-semibold text-accent",
@@ -26,8 +21,6 @@ const STATUS_CLASSES = {
 
 const CANCELLABLE_STATUSES = ["pending", "confirmed"];
 
-// Past its own validity window, not just the booking's end time, the two
-// are not the same, see config.js for why.
 function isGateCodePast(booking) {
   return new Date() > new Date(booking.gateCodeValidUntil);
 }
@@ -37,8 +30,6 @@ export default function Account() {
   const [courts, setCourts] = useState([]);
   const [bookings, setBookings] = useState(null);
   const [error, setError] = useState("");
-  // The booking currently asking "are you sure", separate from the one
-  // actually being cancelled, so a single click can never cancel a booking.
   const [confirmingId, setConfirmingId] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
 

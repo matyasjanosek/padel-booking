@@ -1,7 +1,5 @@
 import { prisma } from "../db/client.js";
 
-// Fisher-Yates. Not security sensitive the way a gate code or session token
-// is, there is nothing to protect against, so Math.random is fine here.
 function shuffle(array) {
   const result = [...array];
   for (let i = result.length - 1; i > 0; i--) {
@@ -11,9 +9,6 @@ function shuffle(array) {
   return result;
 }
 
-// Ranks are 1v4 vs 2v3 within each consecutive group of four, so the
-// strongest and weakest of each group face the two in the middle. Callers
-// only ever pass a list whose length is a multiple of four, see sitOutCount.
 function pairIntoMatchups(rankedPlayers) {
   const matchups = [];
   for (let i = 0; i < rankedPlayers.length; i += 4) {
@@ -23,9 +18,6 @@ function pairIntoMatchups(rankedPlayers) {
   return matchups;
 }
 
-// How many rounds each player has actually been scheduled into so far,
-// counted from existing match rows rather than trusting a stored total, so
-// this never depends on whether a later scoring step has run yet.
 async function countTimesPlayed(tournamentId) {
   const matchPlayers = await prisma.tournamentMatchPlayer.findMany({
     where: { match: { tournamentId } },
@@ -38,10 +30,6 @@ async function countTimesPlayed(tournamentId) {
   return timesPlayed;
 }
 
-// Picks who sits out this round when the player count is not divisible by
-// four. Prioritises whoever has sat out the fewest times so far, so nobody
-// sits out twice before everyone has sat out once; ties go to whoever has
-// fewer points, then lowest id, purely to keep the choice deterministic.
 function pickSitOuts(players, roundsSoFar, timesPlayed, sitOutCount) {
   if (sitOutCount === 0) {
     return [];
@@ -53,9 +41,6 @@ function pickSitOuts(players, roundsSoFar, timesPlayed, sitOutCount) {
   return sorted.slice(0, sitOutCount);
 }
 
-// Generates exactly one round, not the whole tournament schedule. Mexicano
-// only knows how to pair players once the previous round's results are in,
-// so there is nothing to generate upfront.
 export async function generateNextRound(tournamentId) {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },
@@ -100,10 +85,6 @@ export async function generateNextRound(tournamentId) {
   const sittingOut = pickSitOuts(tournament.players, lastRound, timesPlayed, sitOutCount);
   const sittingOutIds = new Set(sittingOut.map((player) => player.id));
   const playing = tournament.players.filter((player) => !sittingOutIds.has(player.id));
-
-  // Nobody has points yet on the very first round, so there is nothing
-  // meaningful to rank by; a random order is the fairest starting point.
-  // From the second round on, players are ranked by their running total.
   const newRound = lastRound + 1;
   const rankedPlayers =
     newRound === 1

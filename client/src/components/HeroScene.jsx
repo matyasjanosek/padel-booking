@@ -1,30 +1,17 @@
-/* eslint-disable react/no-unknown-property -- react-three-fiber maps three.js
-   properties such as object, position and intensity onto JSX elements. */
 import { useRef, useMemo, useEffect, Suspense } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import ballUrl from "../assets/ball_optimized.glb?url";
 
-// ball_source_highpoly.glb (6.65 MB, 1.35 million vertices) is kept in the
-// repo but never loaded, see docs/decisions.md for why and how this file was
-// made from it: decimated to 54,805 vertices and its texture resized to
-// 512x512, both chosen because they are the point past which the fuzzy
-// silhouette starts visibly thinning. The GLB is Draco compressed; the
-// decoder files are served from client/public/draco. Start fetching the
-// model as soon as this chunk loads, before the canvas mounts.
 useGLTF.preload(ballUrl, "/draco/");
 
 function Ball() {
   const spin = useRef();
   const { scene } = useGLTF(ballUrl, "/draco/");
 
-  // Clone so this instance owns its transforms. The scene from useGLTF is shared
-  // and cached, so mutating it directly drifts across remounts.
   const object = useMemo(() => scene.clone(true), [scene]);
 
-  // Centre the model on the origin and scale it to a predictable size. Applied
-  // as props, so re-running it is harmless.
   const { position, scale } = useMemo(() => {
     const box = new THREE.Box3().setFromObject(object);
     const centre = box.getCenter(new THREE.Vector3());
@@ -32,7 +19,6 @@ function Ball() {
     return { position: [-centre.x, -centre.y, -centre.z], scale: 6 / diagonal };
   }, [object]);
 
-  // The model has no animation. Turn it slowly on the Y axis every frame.
   useFrame((_, delta) => {
     spin.current.rotation.y += delta * 0.3;
   });
@@ -44,8 +30,6 @@ function Ball() {
   );
 }
 
-// react-three-fiber's own unmount cleanup already loses the context. This guards
-// against a second loseContext call on an already lost context.
 function releaseRenderer(gl) {
   if (!gl.getContext().isContextLost()) gl.forceContextLoss();
   gl.dispose();
@@ -71,16 +55,12 @@ export default function HeroScene() {
         renderer.current = gl;
       }}
     >
-      {/* The model suspends while it loads. Catching it here keeps r3f from
-          bubbling the suspense out and remounting the whole canvas. */}
+      {/* The model suspends while it loads. */}
       <Suspense fallback={null}>
         <Ball />
       </Suspense>
       {/* Lit like a single floodlight at night, not an evenly lit product
-          shot: a low ambient so most of the ball falls into shadow, one
-          strong light raking down from above, and a dim rim light in the
-          same green as the ball itself (--color-accent) picking out the
-          shadow side instead of leaving it flat black. */}
+          shot */}
       <ambientLight intensity={0.28} />
       <directionalLight position={[4, 9, 6]} intensity={3.4} />
       <directionalLight position={[-6, -2, -4]} intensity={0.7} color="#a6e22e" />

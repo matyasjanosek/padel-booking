@@ -31,24 +31,6 @@ export function listBookingsForAdmin({ status, courtId, date }) {
   });
 }
 
-// Only a reschedule, the court and the start time, not a change of status
-// or of how long the booking is: it keeps its own original duration,
-// there is no duration control in the admin UI for this. Pending or
-// confirmed bookings can be moved; a cancelled or expired one cannot, there
-// is nothing left to reschedule. court_slots is what actually guards
-// against a conflicting target: the old units are freed and the new ones
-// inserted in the same transaction as the move, so a conflict there fails
-// the whole thing the same way a brand new booking's would, surfacing as a
-// P2002 or, under real concurrency, a P2034.
-//
-// A confirmed booking already has lighting scheduled for its old slot, see
-// stripeWebhook.js. Moving it without updating that would leave the lights
-// scheduled for a slot nobody is using any more, and nothing scheduled for
-// the slot the player actually has now. A pending booking was never
-// confirmed, so nothing was ever scheduled for it, there is nothing to
-// touch. The gate code's validity window needs no separate fix: it is
-// computed from the booking's own start time every time a code is checked,
-// see gateAccess.js, never stored, so it already moves with the booking.
 export async function rescheduleBooking(bookingId, { courtId, startTime }) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
   if (!booking) {
@@ -94,14 +76,6 @@ export async function rescheduleBooking(bookingId, { courtId, startTime }) {
   return { outcome: "rescheduled", booking: updated };
 }
 
-// Same rule as the member facing cancelBooking: only pending or confirmed
-// can be cancelled, its court_slots rows are freed in the same transaction
-// as the status change, a pending payment is released, no ownership check
-// since an admin can act on any booking. A confirmed booking's lighting
-// schedule is cancelled too, for the same reason a reschedule cancels the
-// old one: left in place, the lights would still come on for a booking
-// that no longer exists. gateCode is cleared for the same reason, see
-// cancelBooking.
 export async function cancelBookingAsAdmin(bookingId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
   if (!booking) {

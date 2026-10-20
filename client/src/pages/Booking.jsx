@@ -205,11 +205,7 @@ export default function Booking() {
       )}
 
       {/* Pinned once a slot is chosen, so the slot and the price stay
-          visible however far the grid is scrolled: a full width bar
-          anchored to the bottom of the screen on mobile, a floating card
-          in the corner on desktop. Both are position: fixed, not sticky,
-          the stronger guarantee that it never scrolls out of view at all,
-          rather than only after some scroll point. */}
+          visible */}
       {selectedSlot && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-accent/60 bg-surface p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.4)] sm:px-8 md:inset-x-auto md:bottom-8 md:right-10 md:w-80 md:rounded-lg md:border md:p-5 md:shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
           <p className="font-medium text-text">

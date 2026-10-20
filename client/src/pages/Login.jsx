@@ -22,9 +22,6 @@ export default function Login() {
     const form = new FormData(event.target);
     try {
       await login({ email: form.get("email"), password: form.get("password") });
-      // Pages that send a logged out user here first, for example the
-      // booking page, save where they were in location.state.from, so
-      // logging in returns there instead of always going to the account page.
       navigate(location.state?.from ?? "/account");
     } catch (err) {
       setError(err.message);

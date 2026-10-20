@@ -8,8 +8,6 @@ export default function AdminUsers() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState(null);
   const [error, setError] = useState("");
-  // Picking a new role only arms the Save button, it does not save on its
-  // own, so a misclick on the select cannot change someone's role by itself.
   const [roleDrafts, setRoleDrafts] = useState({});
   const [savingId, setSavingId] = useState(null);
 

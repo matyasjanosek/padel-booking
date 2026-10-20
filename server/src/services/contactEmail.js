@@ -10,8 +10,6 @@ Email: ${email}
 ${message}`;
 }
 
-// Throws on failure, same as sendBookingConfirmationEmail, so the caller
-// decides what a failed send means.
 export async function sendContactMessage({ name, email, message }) {
   const resend = getResend();
   const { error } = await resend.emails.send({

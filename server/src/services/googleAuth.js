@@ -4,8 +4,6 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
-// Must match a redirect URI registered for this client in Google Cloud
-// Console. Overridable for environments other than local dev.
 function redirectUri() {
   return (
     process.env.GOOGLE_REDIRECT_URI ||
@@ -52,9 +50,6 @@ export async function fetchGoogleUserInfo(accessToken) {
   return res.json();
 }
 
-// Same user record as email and password: passwordHash stays null, googleId
-// is set instead. If the email already belongs to a password account, this
-// links the Google id to it rather than creating a second account.
 export async function findOrCreateGoogleUser({ googleId, email, name }) {
   const existingByGoogleId = await prisma.user.findUnique({ where: { googleId } });
   if (existingByGoogleId) {

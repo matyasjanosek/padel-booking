@@ -2,8 +2,6 @@ import { isValidDate } from "./validateAvailability.js";
 
 const STATUSES = ["pending", "confirmed", "cancelled", "expired"];
 
-// Every filter is optional, unlike availability's date and courtId, which
-// are both required. An absent filter just means "do not filter by this".
 export function validateAdminBookingsQuery(req, res, next) {
   const { status, courtId, date } = req.query;
 

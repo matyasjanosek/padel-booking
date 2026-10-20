@@ -1,10 +1,5 @@
 import { prisma } from "../db/client.js";
 
-// Points difference (points scored minus points conceded, across a
-// player's finished matches) is not stored anywhere, it is derived from
-// match history every time standings are read, the same approach already
-// used for sit-out fairness in tournamentRounds.js, so it can never drift
-// out of sync with the scores actually entered.
 async function pointsDifferenceByPlayer(tournamentId) {
   const matchPlayers = await prisma.tournamentMatchPlayer.findMany({
     where: { match: { tournamentId } },
@@ -25,8 +20,6 @@ async function pointsDifferenceByPlayer(tournamentId) {
   return difference;
 }
 
-// Ranked by total points, ties broken by points difference, then by id so
-// the order is always fully determined.
 export async function getStandings(tournamentId) {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },

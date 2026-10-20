@@ -1,9 +1,5 @@
-// Real facts about the club, shared by every page that states them (Info,
-// Contact, the footer), so they can never quietly drift apart from each
-// other.
 export const ADDRESS_LINES = ["Pod strání 2268", "756 61 Rožnov pod Radhoštěm"];
 
-// Geocoded from the address above via Nominatim, not guessed.
 export const CLUB_COORDS = { lat: 49.4650275, lng: 18.1631424 };
 
 export const DIRECTIONS_URL =

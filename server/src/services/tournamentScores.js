@@ -1,11 +1,5 @@
 import { prisma } from "../db/client.js";
 
-// Points go to individual players, never to teams, so each player on a team
-// gets that team's score added to their own running total. Re-entering a
-// score for a match that already has one is just another call here: the
-// delta against whatever was credited before (0 if this is the first entry)
-// is what actually gets applied, so a correction adjusts points up or down
-// by exactly the right amount instead of needing to be undone first.
 export async function recordScore(tournamentId, matchId, { scoreA, scoreB }) {
   const match = await prisma.tournamentMatch.findUnique({
     where: { id: matchId },
@@ -36,11 +30,6 @@ export async function recordScore(tournamentId, matchId, { scoreA, scoreB }) {
     };
   }
 
-  // The tournament itself is finished once its last round's last score
-  // comes in, so that is checked here rather than left for every page that
-  // shows a tournament to work out on its own. Every other match in this
-  // round has to already have a score, this one is about to get one as
-  // part of the same update.
   const isLastRound = match.round === match.tournament.roundCount;
   let tournamentFinished = false;
   if (isLastRound) {

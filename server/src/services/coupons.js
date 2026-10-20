@@ -1,7 +1,5 @@
 import { prisma } from "../db/client.js";
 
-// Coupon codes are stored and compared uppercase, so SUMMER10 and summer10
-// are the same coupon, a typo in case should not matter.
 function normalizeCode(code) {
   return code.trim().toUpperCase();
 }
@@ -39,9 +37,6 @@ export async function setCouponActive(id, isActive) {
   return { outcome: isActive ? "activated" : "deactivated", coupon: updated };
 }
 
-// Checked whenever a coupon code is applied to a new booking. Does not
-// touch timesUsed, a use is only counted once the booking is actually
-// confirmed, see handlePaymentSucceeded in stripeWebhook.js.
 export async function validateCoupon(code) {
   const coupon = await prisma.coupon.findUnique({ where: { code: normalizeCode(code) } });
   if (!coupon) {

@@ -4,10 +4,6 @@ import { fetchCourts } from "./api/courts.js";
 import Hero from "./components/Hero.jsx";
 import sunsetPhoto from "./assets/photos/club-at-sunset.jpg";
 
-// The scrim's own opacity reaches the brightest sky highlight actually in
-// this photo at 70% and still holds 6.3:1 against chalk text there, 15.1:1
-// where the heading itself sits, at 92%. Measured once, directly, not
-// approximated with a generic Tailwind gradient.
 const SCRIM = {
   backgroundImage:
     "linear-gradient(to top, rgba(10,10,10,0.92) 0%, rgba(10,10,10,0.78) 28%, rgba(10,10,10,0.32) 55%, rgba(10,10,10,0) 78%)",
@@ -27,8 +23,6 @@ export default function App() {
     <>
       <Hero />
 
-      {/* The one atmospheric moment on this page, so nothing else competes
-          with it: everything around it stays quiet. */}
       <section className="relative h-72 sm:h-96 md:h-[480px]">
         <img
           src={sunsetPhoto}

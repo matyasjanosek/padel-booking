@@ -41,7 +41,6 @@ const confirmedUpcomingBooking = {
   status: "confirmed",
   holdExpiresAt: null,
   gateCode: "482913",
-  // Far in the future, so this window has not started yet, let alone passed.
   gateCodeValidFrom: "2031-06-10T17:40:00.000+02:00",
   gateCodeValidUntil: "2031-06-10T18:45:00.000+02:00",
 };
@@ -76,9 +75,6 @@ describe("Account", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Account" })).toBeInTheDocument();
     expect(screen.getByText("Alex")).toBeInTheDocument();
     expect(screen.getByText("alex@example.com")).toBeInTheDocument();
-    // Account also fetches the user's bookings and the courts list on mount.
-    // Wait for that to settle so the state updates do not land after this
-    // test has already finished.
     await screen.findByText(/you have no bookings yet/i);
   });
 

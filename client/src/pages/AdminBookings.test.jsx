@@ -209,8 +209,6 @@ describe("AdminBookings", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Change" }));
     await screen.findByLabelText("Time");
-    // Changing the court re-fetches availability and resets the time choice,
-    // so the court must be picked before the time, not after.
     fireEvent.change(screen.getAllByLabelText("Court").at(-1), { target: { value: "2" } });
     await screen.findByLabelText("Time");
     fireEvent.change(screen.getByLabelText("Time"), {

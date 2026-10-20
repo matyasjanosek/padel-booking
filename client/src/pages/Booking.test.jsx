@@ -177,9 +177,6 @@ describe("Booking", () => {
 
     const tooShortButton = (await screen.findAllByText("Under 1h"))[0].closest("button");
 
-    // Reachable by keyboard, not the disabled attribute: a screen reader or
-    // keyboard user would otherwise skip straight over it and never learn
-    // why that time is unavailable.
     expect(tooShortButton).not.toBeDisabled();
     expect(tooShortButton).toHaveAttribute("aria-disabled", "true");
     expect(tooShortButton).toHaveAccessibleName(/under one hour free/i);
@@ -267,8 +264,6 @@ describe("Booking", () => {
     const court1Heading = await screen.findByRole("heading", { name: "Court 1", level: 3 });
     const court2Heading = screen.getByRole("heading", { name: "Court 2", level: 3 });
 
-    // closest("div") finds SlotGrid's own inner wrapper first, the
-    // highlight border is one level up, on the wrapper this page adds.
     expect(court1Heading.closest("div").parentElement.className).toContain("border-transparent");
     expect(court2Heading.closest("div").parentElement.className).toContain("border-accent");
   });

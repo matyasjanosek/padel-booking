@@ -54,10 +54,6 @@ export function validateCreateBooking(req, res, next) {
   next();
 }
 
-// Same slot validity rule as validateCreateBooking, without the "must be in
-// the future" check: this is an admin correcting an existing booking, not a
-// member starting a new one, and an admin may legitimately need to fix a
-// slot that has already passed.
 export function validateRescheduleBooking(req, res, next) {
   const { courtId, startTime } = req.body;
 

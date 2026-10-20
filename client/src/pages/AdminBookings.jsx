@@ -18,9 +18,6 @@ const STATUS_OPTIONS = ["pending", "confirmed", "cancelled", "expired"];
 const CANCELLABLE_STATUSES = ["pending", "confirmed"];
 const RESCHEDULABLE_STATUSES = ["pending", "confirmed"];
 
-// The court and time pickers reuse the real availability endpoint rather
-// than working out Prague's own UTC offset here, the server already does
-// that correctly, this just reuses the exact strings it returns.
 function RescheduleForm({ booking, courts, onCancel, onSaved }) {
   const [courtId, setCourtId] = useState(booking.courtId);
   const [date, setDate] = useState(booking.startTime.slice(0, 10));

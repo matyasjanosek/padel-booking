@@ -1,8 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-// The whole session is this one signed cookie, there is no session store.
-// The value is the user id, so no other request state needs to be looked up
-// to know who is asking, only whether the signature still matches.
 const COOKIE_NAME = "session";
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
