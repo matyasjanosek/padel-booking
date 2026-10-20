@@ -4,9 +4,6 @@ import { handleStripeEvent } from "../services/stripeWebhook.js";
 
 export const stripeWebhookRouter = Router();
 
-// Stripe signs the exact raw request body, so this route needs it
-// unparsed, raw() here instead of the app-wide express.json(); app.js
-// mounts this router before that global parser for the same reason.
 stripeWebhookRouter.post(
   "/stripe/webhook",
   express.raw({ type: "application/json" }),

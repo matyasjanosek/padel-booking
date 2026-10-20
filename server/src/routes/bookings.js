@@ -34,10 +34,6 @@ bookingsRouter.post("/bookings", requireAuth, validateCreateBooking, async (req,
     });
     res.status(201).json(toPublicBooking(booking));
   } catch (error) {
-    // P2002 is a plain conflict on an already taken unit; P2034 is the same
-    // conflict surfacing as a write conflict or deadlock instead, which can
-    // happen under real concurrency on the same unique index, see
-    // courtSlots.js. Both mean the same thing to whoever is booking.
     if (error.code === "P2002" || error.code === "P2034") {
       return res.status(409).json({ error: "That slot was just taken. Pick another one." });
     }

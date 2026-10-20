@@ -31,8 +31,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate
-      # The booking concurrency test needs a real database and a seeded
-      # court, not only the mocked unit tests.
       - run: npx prisma migrate deploy
       - run: node prisma/seed.js
       - run: npm run lint

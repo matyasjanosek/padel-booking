@@ -17,12 +17,6 @@ function renderNav(initialEntries = ["/"]) {
   );
 }
 
-// The desktop links and the mobile menu's own copy share the same labels;
-// only one of the two is ever actually visible in a real browser, CSS
-// decides which, but jsdom renders both into the DOM regardless. Scoping to
-// the desktop nav's own landmark is what a real visitor's assistive tech
-// would see too, since the other copy is either display:none or has the
-// native hidden attribute.
 function desktopNav() {
   return within(screen.getByRole("navigation", { name: "Primary" }));
 }

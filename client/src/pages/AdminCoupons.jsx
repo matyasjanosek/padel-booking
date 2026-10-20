@@ -39,8 +39,6 @@ export default function AdminCoupons() {
     setCreating(true);
     setFormError("");
     try {
-      // datetime-local has no timezone of its own, new Date() reads it in
-      // the browser's local time, exactly as the admin entered it.
       const created = await createCoupon({
         ...form,
         validFrom: new Date(form.validFrom).toISOString(),

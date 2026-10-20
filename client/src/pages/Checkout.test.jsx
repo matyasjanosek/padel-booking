@@ -36,8 +36,6 @@ const pendingBooking = {
   price: 400,
 };
 
-// The price sits in its own numeral treatment, the CZK unit in a nested
-// span, so it is never one plain text node to match against directly.
 function priceText() {
   return screen.getByText("CZK").closest("p").textContent;
 }
@@ -145,11 +143,7 @@ describe("Checkout", () => {
       "Once you pay, this booking cannot be refunded, even if you cancel it afterwards.",
     );
 
-    // Directly above the button: the very next element in the form.
     expect(warning.closest("div").nextElementSibling).toBe(payButton);
-    // A solid fill, not small grey print: bg-danger needs dark text for
-    // real contrast (2.31:1 with the light text colour, 7.16:1 with the
-    // dark one), measured, not assumed from the plan's own wording.
     expect(warning.closest("div").className).toContain("bg-danger");
     expect(warning.className).toContain("text-bg");
     expect(payButton.className).toContain("btn-primary");
@@ -186,8 +180,6 @@ describe("Checkout", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Pay now" }));
 
     expect(await screen.findByText("Your card was declined.")).toBeInTheDocument();
-    // Stripe's own message is specific to the failure; it never says what to
-    // do about it on its own, so this is added alongside it, not instead of it.
     expect(
       screen.getByText(/check your card details and try again, or use a different card/i),
     ).toBeInTheDocument();
@@ -198,8 +190,6 @@ describe("Checkout", () => {
   });
 
   it("calls loadStripe only once, even across separate visits to checkout", async () => {
-    // A fresh module instance so this test's call count is not polluted by
-    // the singleton other tests in this file have already populated.
     vi.resetModules();
     const { loadStripe: freshLoadStripe } = await import("@stripe/stripe-js");
     const { default: FreshCheckout } = await import("./Checkout.jsx");
@@ -229,8 +219,6 @@ describe("Checkout", () => {
     renderFresh();
     await screen.findByTestId("payment-element");
 
-    // Going back to checkout and arriving again used to create a second
-    // Stripe instance, which Elements then rejected as a changed stripe prop.
     expect(freshLoadStripe).toHaveBeenCalledTimes(1);
   });
 

@@ -37,8 +37,6 @@ See you on the court.
 GEN PADEL Rožnov`;
 }
 
-// booking must already carry its user and court. Throws on failure, so the
-// caller decides what a failed email should mean, see stripeWebhook.js.
 export async function sendBookingConfirmationEmail(booking) {
   const resend = getResend();
   const { error } = await resend.emails.send({

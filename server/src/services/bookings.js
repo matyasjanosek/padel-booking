@@ -16,29 +16,12 @@ function priceForDuration(durationMinutes) {
   return (durationMinutes / 60) * PRICE_PER_HOUR_CZK;
 }
 
-// Creates a pending booking with a hold a few minutes ahead, for a chosen
-// start and duration. The court_slots table is the only thing enforcing no
-// overlap: the booking row and one court_slots row per 30 minute unit it
-// covers are inserted together in one transaction, so a conflict with any
-// existing booking, whatever its own start time, fails the insert and rolls
-// both back. There is nothing to reclaim here any more: a cancelled or
-// expired booking's own units are deleted as it happens (see cancelBooking,
-// cancelBookingAsAdmin and expireStaleHolds), so a freed slot is simply
-// free, not a stale row waiting to be taken over.
 export async function createBooking({ userId, courtId, startTime, durationMinutes, couponCode }) {
-  // An inactive court is not bookable, the same as if it did not exist.
-  // There is no foreign key for "and the court must be active", so this
-  // needs its own check; thrown with a P2003 code so the existing "court
-  // not found" handling in the route already covers it, nothing else about
-  // that response needs to say whether the court is missing or just closed.
   const court = await prisma.court.findUnique({ where: { id: courtId } });
   if (!court || !court.isActive) {
     throw Object.assign(new Error("Court not found"), { code: "P2003" });
   }
 
-  // Applying the code only checks it is currently usable, it does not count
-  // as a use yet, see handlePaymentSucceeded in stripeWebhook.js for that.
-  // A bad code is rejected here, before any booking row exists.
   let price = priceForDuration(durationMinutes);
   let couponId = null;
   if (couponCode) {
@@ -79,28 +62,6 @@ export function listBookingsForUser(userId) {
   });
 }
 
-// Only the booking's own owner can cancel it, and only while it is still
-// pending or confirmed, a booking that already expired or was cancelled
-// cannot be cancelled again. Returns which of those applied, so the route
-// can turn it into the right status code, there is no single good sentinel
-// value to tell apart "not found", "not yours" and "already settled".
-//
-// Its court_slots rows are deleted in the same transaction as the status
-// change, so the slot is free again, for anyone, the instant this commits:
-// there is no freed-but-not-yet-freed moment another request could land in.
-// If a payment for it is still pending, nobody completed or failed the
-// checkout before cancelling, that payment is released too, see
-// releasePaymentIfPending; this runs after the transaction, a call to
-// Stripe cannot be part of a database transaction. Cancelling an already
-// paid booking does not touch its payment, undoing that needs an actual
-// refund, out of scope here.
-//
-// gateCode is cleared, not just left behind: a cancelled booking must not
-// carry a code that still looks live sitting in the row, even though
-// gateAccess.js's own status check already refuses it either way. The same
-// reasoning applies to lighting: a confirmed booking already has it
-// scheduled (see stripeWebhook.js), and cancelling must cancel that too, or
-// the lights would still come on for a booking that no longer exists.
 export async function cancelBooking(bookingId, userId) {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
 
@@ -130,10 +91,6 @@ export async function cancelBooking(bookingId, userId) {
 }
 
 export function toPublicBooking(booking) {
-  // Only a confirmed booking has a working code. cancelBooking never clears
-  // gateCode off a booking that was confirmed before it was cancelled, so
-  // this checks status itself rather than just booking.gateCode, or a
-  // cancelled booking would still show one.
   const hasGateCode = booking.status === "confirmed";
   const { validFrom, validUntil } = hasGateCode
     ? gateCodeWindow(booking.startTime, booking.endTime)
@@ -145,10 +102,7 @@ export function toPublicBooking(booking) {
     startTime: formatPragueIso(booking.startTime),
     endTime: formatPragueIso(booking.endTime),
     status: booking.status,
-    // price is a Prisma Decimal, which serialises to a string in JSON.
     price: Number(booking.price),
-    // Only present when the booking's coupon was included in the query it
-    // came from (listBookingsForUser does this, so Checkout can show it).
     couponCode: booking.coupon?.code ?? null,
     gateCode: hasGateCode ? booking.gateCode : null,
     gateCodeValidFrom: validFrom ? formatPragueIso(validFrom) : null,

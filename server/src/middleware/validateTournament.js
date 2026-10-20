@@ -33,7 +33,6 @@ export function validateCreateTournament(req, res, next) {
   next();
 }
 
-// Exactly one of userId (a member) or displayName (a guest) must be given.
 export function validateRegisterPlayer(req, res, next) {
   const { userId, displayName } = req.body;
   const hasUserId = userId !== undefined && userId !== null && userId !== "";
@@ -56,9 +55,6 @@ export function validateRegisterPlayer(req, res, next) {
   next();
 }
 
-// Whether the two scores actually add up to the tournament's configured
-// points per match is checked in the service, once it has the tournament
-// loaded; this only checks the shape of what was sent.
 export function validateScore(req, res, next) {
   const { scoreA, scoreB } = req.body;
   const scoreANumber = Number(scoreA);

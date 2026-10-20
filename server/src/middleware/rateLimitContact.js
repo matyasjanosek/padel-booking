@@ -2,10 +2,6 @@ import { CONTACT_RATE_LIMIT_MAX_MESSAGES, CONTACT_RATE_LIMIT_WINDOW_MINUTES } fr
 
 const WINDOW_MS = CONTACT_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
 
-// In memory only, per IP, counts reset if the server restarts; acceptable
-// for a single process service. Every attempt counts, whether it turns out
-// valid or not, this is about limiting how much mail one visitor can
-// trigger, not about guessing anything.
 const submissionsByIp = new Map();
 
 export function rateLimitContact(req, res, next) {
@@ -25,7 +21,6 @@ export function rateLimitContact(req, res, next) {
   next();
 }
 
-// Test only: the map above is otherwise private module state.
 export function resetContactRateLimiter() {
   submissionsByIp.clear();
 }

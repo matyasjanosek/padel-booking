@@ -13,8 +13,6 @@ availabilityRouter.get("/availability", validateAvailabilityQuery, async (req, r
     if (!slots) {
       return res.status(404).json({ error: "Court not found" });
     }
-    // Sent here, not hardcoded on the client, so the price shown before
-    // booking always matches what booking creation will actually charge.
     res.json({
       date,
       courtId,

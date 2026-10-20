@@ -2,12 +2,8 @@ import { Suspense, lazy } from "react";
 import racketsPhoto from "../assets/photos/rackets-and-balls.jpg";
 import { ADDRESS_LINES, DIRECTIONS_URL, OPENING_HOURS } from "../constants/business.js";
 
-// Leaflet is a real dependency, not a one-off chunk like the hero's 3D ball,
-// but it is still only needed on this page, so it stays a lazy import.
 const ClubMap = lazy(() => import("../components/ClubMap.jsx"));
 
-// Shown while the map's own chunk downloads, same markup as ClubMap's
-// internal fallback so there is no visible swap between the two.
 function MapPlaceholder() {
   return (
     <div className="flex h-[220px] w-full max-w-xs flex-col justify-center gap-2 rounded-lg border border-border bg-surface p-4">
@@ -65,9 +61,6 @@ export default function Info() {
       </section>
 
       <section className="border-t border-border px-5 py-12 md:max-w-page md:py-16 md:pl-24 md:pr-10">
-        {/* A fixed column width, not auto: the old SVG had its own
-            intrinsic size from its viewBox for an auto column to pick up,
-            the map's div does not, and auto collapsed it to nothing. */}
         <div className="grid gap-10 md:grid-cols-[20rem_1fr] md:items-start md:gap-16">
           <Suspense fallback={<MapPlaceholder />}>
             <ClubMap />

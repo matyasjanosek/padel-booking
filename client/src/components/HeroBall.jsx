@@ -1,12 +1,7 @@
 import { Suspense, lazy, useState } from "react";
 
-// The scene pulls in three.js and the 6.6 MB model, so it is a lazy chunk that
-// only loads once we decide to show it.
 const HeroScene = lazy(() => import("./HeroScene.jsx"));
 
-// Decide once, when the hero first renders, whether to show the moving ball:
-// wide screens only, and only when the visitor has not asked for reduced motion.
-// This is not re-evaluated later, so a live scene is never torn down.
 function useShouldRender3d() {
   const [ok] = useState(
     () =>

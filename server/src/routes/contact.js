@@ -5,9 +5,6 @@ import { sendContactMessage } from "../services/contactEmail.js";
 
 export const contactRouter = Router();
 
-// Public, no login needed, anyone visiting the site can use the contact
-// form. rateLimitContact runs first so even an invalid, rejected submission
-// still counts against the limit.
 contactRouter.post("/contact", rateLimitContact, validateContact, async (req, res) => {
   try {
     await sendContactMessage(req.body);

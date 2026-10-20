@@ -1,8 +1,5 @@
 @import "tailwindcss";
 
-/* Design tokens. Defined once here, used through Tailwind utilities everywhere.
-   Values come from docs/plan.md. Clearing a namespace with `initial` drops
-   Tailwind's defaults so only these tokens are available. */
 @theme {
   --color-*: initial;
   --color-bg: #0a0a0a;
@@ -44,11 +41,6 @@
   }
 }
 
-/* The two button kinds used everywhere: primary is the filled, accent
-   button, one per page, for the one action that matters. Secondary is
-   everything else. Both get a visible focus ring in addition to the
-   existing hover/border colour change, a hard-edged double shadow rather
-   than a blur so it stays crisp and reads the same over either fill. */
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-full bg-accent px-7 py-3 font-medium text-bg
@@ -69,15 +61,10 @@
       0 0 0 4px var(--color-accent);
   }
 
-  /* Compact variant, for tight spaces like the header. */
   .btn-sm {
     @apply px-4 py-1.5 text-sm;
   }
 
-  /* A price treated like a scoreboard number, not a sentence: the display
-     face, bold, tight line height, digits that line up. Size is set by
-     whatever uses it, a standalone price (Info) and one inside a tight
-     panel (Booking) need different sizes, not a different treatment. */
   .numeral {
     font-family: var(--font-heading);
     font-weight: 700;
@@ -86,26 +73,10 @@
   }
 }
 
-/* Overrides Leaflet's own stylesheet, so these live outside the Tailwind
-   layers: unlayered rules always win over layered ones regardless of
-   selector specificity, and leaflet.css itself is loaded unlayered.
-   Plain OSM tiles are a light basemap. The filter targets only the tile
-   pane, Leaflet's own name for the layer the tile images sit in, so the
-   marker and the attribution control, both separate panes, are untouched.
-   invert flips light to dark, hue-rotate corrects the colour shift invert
-   causes (otherwise green space reads as magenta), brightness and
-   contrast pull it back from stark black and white. */
 .club-map .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
 }
 
-/* The attribution control is a light box by default, left unfiltered on
-   purpose; restyled here instead, to the surface colour the rest of the
-   site already uses. 4.78:1 for the muted text, 15.4:1 for the
-   OpenStreetMap link, both measured, not assumed. Matches Leaflet's own
-   selector specificity (.leaflet-container .leaflet-control-attribution,
-   two classes) plus .club-map, so it wins the tie regardless of which
-   stylesheet the bundler places last. */
 .club-map .leaflet-container .leaflet-control-attribution {
   background: rgb(20 20 20 / 85%);
   color: var(--color-text-muted);
@@ -115,7 +86,6 @@
   color: var(--color-text);
 }
 
-/* Motion stays slow and subtle, and is removed when the visitor asks for that. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -126,9 +96,6 @@
   }
 }
 
-/* The hero's own entrance: the floodlight glow behind the ball rises from
-   nothing, like the lights switching on, rather than the text sliding up.
-   The text itself does not move. */
 @media (prefers-reduced-motion: no-preference) {
   .hero-glow {
     opacity: 0;

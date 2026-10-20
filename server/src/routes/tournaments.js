@@ -18,8 +18,6 @@ import { getTournamentOverview } from "../services/tournamentOverview.js";
 
 export const tournamentsRouter = Router();
 
-// Public, no login needed: the public tournament page and the TV display
-// both read from here. Everything else in this file is admin only.
 tournamentsRouter.get("/tournaments/:id/overview", async (req, res) => {
   const tournamentId = Number(req.params.id);
   if (!Number.isInteger(tournamentId) || tournamentId <= 0) {

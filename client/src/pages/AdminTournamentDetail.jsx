@@ -20,18 +20,11 @@ const STATUS_LABELS = {
   finished: "Finished",
 };
 
-// Every registered player, whether they are playing this round or sitting
-// it out. The overview has no single "all players" field, this is the two
-// parts of it that together always add up to the full roster.
 function allPlayers(overview) {
   const playing = overview.matches.flatMap((match) => [...match.teamA, ...match.teamB]);
   return [...playing, ...overview.sitOutPlayers];
 }
 
-// A team's score and the other team's are always the other side of the
-// same points total, Mexicano is played to a fixed number of points. So
-// moving one stepper sets the other team's score too, there is no way to
-// end up with a total that does not add up, and no second number to enter.
 function scoreAfterChange(team, value, pointsPerMatch) {
   const clamped = Math.max(0, Math.min(pointsPerMatch, value));
   const other = pointsPerMatch - clamped;

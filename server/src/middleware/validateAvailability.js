@@ -1,6 +1,5 @@
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-// Shared with validateAdminBookings.js, the same YYYY-MM-DD check.
 export function isValidDate(value) {
   if (typeof value !== "string" || !DATE_PATTERN.test(value)) {
     return false;

@@ -1,9 +1,3 @@
-// No real lighting or gate hardware exists yet, see docs/plan.md. This
-// implementation only stores what would have happened and logs it, so the
-// booking and gate access flows can be built, tested and demonstrated
-// without real hardware. A later real implementation would export the same
-// functions from its own file, swapped in at hardware/index.js, with
-// nothing else in the app needing to change.
 const lightingSchedules = [];
 const gateEvents = [];
 
@@ -16,11 +10,6 @@ export function scheduleLighting({ courtId, startTime, endTime }) {
   return schedule;
 }
 
-// courtId and startTime together are the same key a booking's own slot is
-// unique on, so they are enough to find the one schedule entry that belongs
-// to a booking being rescheduled or cancelled. Does nothing if there is no
-// matching entry, for example the booking was still pending and nothing
-// was ever scheduled for it.
 export function cancelLighting({ courtId, startTime }) {
   const index = lightingSchedules.findIndex(
     (schedule) =>

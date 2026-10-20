@@ -72,9 +72,6 @@ describe("SlotGrid", () => {
 
     const button = screen.getByText("Under 1h").closest("button");
 
-    // Not the disabled attribute: that would drop it from the keyboard tab
-    // order entirely, so a keyboard or screen reader user would skip
-    // straight over it and never learn why that time is unavailable.
     expect(button).not.toBeDisabled();
     expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).toHaveAccessibleName("09:00, under one hour free, too short for a booking");

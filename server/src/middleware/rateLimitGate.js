@@ -2,10 +2,6 @@ import { GATE_RATE_LIMIT_MAX_FAILURES, GATE_RATE_LIMIT_WINDOW_MINUTES } from "..
 
 const WINDOW_MS = GATE_RATE_LIMIT_WINDOW_MINUTES * 60 * 1000;
 
-// In memory only, per IP, counts reset if the server restarts; acceptable
-// for a single process deployment and for codes that are only ever valid
-// for a short window anyway. Only recordFailedAttempt below adds to this,
-// see config.js for why a correct code must never count against it.
 const failuresByIp = new Map();
 
 export function rateLimitGate(req, res, next) {
@@ -28,7 +24,6 @@ export function recordFailedGateAttempt(ip) {
   }
 }
 
-// Test only: the map above is otherwise private module state.
 export function resetGateRateLimiter() {
   failuresByIp.clear();
 }

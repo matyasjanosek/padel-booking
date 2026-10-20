@@ -24,12 +24,6 @@ function toPublicMatch(match) {
   };
 }
 
-// Everything the public tournament page and the TV display need, read only,
-// no login required for either. "The next round" has no matches to show
-// yet, Mexicano only ever generates one round at a time, so this reports
-// whether the current round is finished and the tournament's round count
-// instead, so a viewer can see "round 3 of 6, waiting for the next round"
-// rather than being shown pairings that do not exist.
 export async function getTournamentOverview(tournamentId) {
   const tournament = await prisma.tournament.findUnique({
     where: { id: tournamentId },

@@ -1,29 +1,14 @@
 import { prisma } from "../db/client.js";
 import { getStripe } from "../stripeClient.js";
 
-// A Payment Element can mount directly against an intent still in one of
-// these statuses, including resuming one left mid 3D Secure. Reusing its
-// client secret for any other status would hand the client a broken,
-// unmountable form.
 const PAYABLE_INTENT_STATUSES = [
   "requires_payment_method",
   "requires_confirmation",
   "requires_action",
 ];
 
-// succeeded or processing can still turn into a real charge on their own
-// with no further action from the customer, starting a second attempt
-// risks charging them twice. Every other non payable status (in practice,
-// canceled) is a dead end that will never confirm, so it is safe, and
-// necessary, to replace rather than block the booking from ever being paid.
 const BLOCKING_INTENT_STATUSES = ["succeeded", "processing"];
 
-// Starts paying for a pending booking. Looks up any existing payment for it
-// first, Stripe payment intents are meant to be reused across retries
-// rather than recreated, so reloading the checkout page does not create a
-// second one for the same booking. Returns which of several outcomes
-// applied, the same shape cancelBooking uses, there is more than one reason
-// this can fail and the route needs to tell them apart.
 export async function createPaymentIntentForBooking(bookingId, userId) {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -57,18 +42,10 @@ export async function createPaymentIntentForBooking(bookingId, userId) {
       return { outcome: "in_progress" };
     }
 
-    // A dead intent, for example canceled. Clear it and fall through to
-    // create a fresh one below, the same booking must always be payable
-    // again rather than permanently stuck because of one abandoned attempt.
     await stripe.paymentIntents.cancel(booking.payment.stripePaymentIntentId).catch(() => {});
     await prisma.payment.delete({ where: { bookingId: booking.id } });
   }
 
-  // Payment.amount and the API response stay in crowns, matching how
-  // Booking.price is already stored and shown. Stripe's own amount is in
-  // the currency's minor unit, CZK has two decimal places like most
-  // currencies (it is not one of the zero-decimal ones such as JPY), so
-  // only the amount sent to Stripe is multiplied by 100.
   const amountCzk = Number(booking.price);
   const stripeAmount = Math.round(amountCzk * 100);
 
@@ -93,10 +70,6 @@ export async function createPaymentIntentForBooking(bookingId, userId) {
     if (error.code !== "P2002") {
       throw error;
     }
-    // A concurrent request for the same booking won the race and already
-    // created the payment row. Cancel the intent this request just made so
-    // it is not left dangling at Stripe, and use the one that was actually
-    // stored.
     await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
     payment = await prisma.payment.findUniqueOrThrow({ where: { bookingId: booking.id } });
   }
@@ -114,23 +87,6 @@ export async function createPaymentIntentForBooking(bookingId, userId) {
   };
 }
 
-// Called whenever a booking's hold expires or the booking is cancelled
-// while its payment is still pending, nobody ever completed or failed the
-// checkout. If the slot is later reclaimed by a different booking attempt,
-// createPaymentIntentForBooking's "reuse an existing payment" lookup would
-// otherwise hand the new occupant a payment intent that belongs to the
-// previous, abandoned attempt; if that old intent is somehow still paid
-// later, the webhook would confirm whichever booking currently occupies
-// the row, not necessarily the person who paid. Cancelling the intent at
-// Stripe and clearing the local payment row makes the slot start
-// financially clean for whoever books it next.
-//
-// The row is only deleted once the cancel at Stripe has actually gone
-// through. A failed cancel, for example because the intent already
-// succeeded, means the row might still represent a real payment, so it is
-// left in place rather than deleted, findable later by its own
-// stripePaymentIntentId or by this bookingId, and the failure is logged
-// rather than swallowed.
 export async function releasePaymentIfPending(bookingId) {
   const payment = await prisma.payment.findUnique({ where: { bookingId } });
   if (!payment || payment.status !== "pending") {
