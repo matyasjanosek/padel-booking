@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import HeroBall from "./HeroBall.jsx";
+import HeroCard from "./HeroCard.jsx";
+import NextFreeSlotCard from "./NextFreeSlotCard.jsx";
 
 const STEPS = [
   { n: "01", title: "Pick a time", detail: "See free slots live" },
@@ -29,25 +31,6 @@ function PlayIcon() {
   return (
     <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
       <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" />
     </svg>
   );
 }
@@ -93,26 +76,6 @@ function CourtLines() {
         strokeWidth="2"
       />
     </svg>
-  );
-}
-
-function Card({ icon, label, value, className }) {
-  return (
-    <div
-      className={`absolute flex items-center gap-3.5 whitespace-nowrap rounded-[22px] border border-border bg-surface/[0.72] px-5 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.55)] backdrop-blur-[14px] ${className}`}
-    >
-      {icon}
-      <div>
-        {label && (
-          <small className="block text-[13px] uppercase tracking-[0.08em] text-text-muted">
-            {label}
-          </small>
-        )}
-        <b className={`block font-bold ${label ? "mt-1.5 text-lg" : "text-[15px] font-semibold"}`}>
-          {value}
-        </b>
-      </div>
-    </div>
   );
 }
 
@@ -171,24 +134,15 @@ export default function Hero() {
       >
         <CourtLines />
         <HeroBall />
-        <Card
-          icon={
-            <span className="flex size-11 flex-none items-center justify-center rounded-[14px] bg-hero-accent text-bg">
-              <ClockIcon />
-            </span>
-          }
-          label="Availability"
-          value="See free slots live"
-          className="-left-[6%] top-[4%]"
-        />
-        <Card
+        <NextFreeSlotCard />
+        <HeroCard
           icon={
             <span className="size-2 flex-none animate-pulse rounded-full bg-hero-accent shadow-[0_0_12px_var(--color-hero-accent)]" />
           }
           value="Gate code by email"
           className="right-0 top-[14%]"
         />
-        <Card
+        <HeroCard
           icon={
             <span className="flex size-11 flex-none items-center justify-center rounded-[14px] bg-hero-accent text-bg">
               <LightsIcon />
