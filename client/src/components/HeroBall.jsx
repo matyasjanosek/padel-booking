@@ -24,13 +24,14 @@ export default function HeroBall() {
   return (
     <div className="relative hidden md:block md:h-[520px]" aria-hidden="true">
       {/* The ball's own floodlight: a pool of light it sits in, not a flat
-          background. Accent-coloured at low opacity, nothing new, the same
-          green the ball itself is lit with in the scene below. */}
+          background. The hero's own lime at low opacity, not the site's
+          main accent, the same colour the ball itself is lit with in the
+          scene below. */}
       <div
         className="hero-glow pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 55%, rgba(166,226,46,0.16), rgba(166,226,46,0.04) 38%, transparent 68%)",
+            "radial-gradient(circle at 50% 55%, rgba(163,230,53,0.16), rgba(163,230,53,0.04) 38%, transparent 68%)",
         }}
       />
       <div className="absolute inset-0">

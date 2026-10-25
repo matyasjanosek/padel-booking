@@ -1,3 +1,5 @@
+/* eslint-disable react/no-unknown-property -- react-three-fiber maps three.js
+   properties such as object, position and intensity onto JSX elements. */
 import { useRef, useMemo, useEffect, Suspense } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -63,7 +65,7 @@ export default function HeroScene() {
           shot */}
       <ambientLight intensity={0.28} />
       <directionalLight position={[4, 9, 6]} intensity={3.4} />
-      <directionalLight position={[-6, -2, -4]} intensity={0.7} color="#a6e22e" />
+      <directionalLight position={[-6, -2, -4]} intensity={0.7} color="#a3e635" />
     </Canvas>
   );
 }

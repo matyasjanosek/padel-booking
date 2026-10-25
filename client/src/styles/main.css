@@ -8,6 +8,9 @@
   --color-text-muted: #7a8578;
   --color-accent: #a6e22e;
   --color-accent-dim: #2a3d14;
+  /* Hero only, per the redesign exception: the rest of the site keeps
+     --color-accent. */
+  --color-hero-accent: #a3e635;
   --color-border: #242424;
   --color-danger: #f87171;
 
@@ -63,6 +66,18 @@
 
   .btn-sm {
     @apply px-4 py-1.5 text-sm;
+  }
+
+  /* The hero's own "Book a court" button only, see --color-hero-accent. */
+  .btn-primary-hero {
+    @apply bg-hero-accent;
+  }
+
+  .btn-primary-hero:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-bg),
+      0 0 0 4px var(--color-hero-accent);
   }
 
   .numeral {
