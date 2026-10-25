@@ -39,8 +39,8 @@ function LightsIcon() {
   return (
     <svg
       aria-hidden="true"
-      width="22"
-      height="22"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -81,9 +81,9 @@ function CourtLines() {
 
 export default function Hero() {
   return (
-    <section className="grid gap-12 px-5 py-16 md:max-w-page md:grid-cols-[1.1fr_1fr] md:items-center md:gap-12 md:py-24 md:pl-24 md:pr-10">
+    <section className="grid gap-8 px-5 py-10 md:max-w-page md:grid-cols-[1.15fr_1fr] md:items-center md:gap-8 md:py-12 md:pl-24 md:pr-10">
       <div>
-        <h1 className="mb-9 flex flex-col text-[clamp(4rem,7.4vw,8.875rem)] leading-[0.84] tracking-[-0.035em]">
+        <h1 className="mb-5 flex flex-col text-[clamp(2.75rem,4.6vw,4.75rem)] leading-[1.08] tracking-[-0.02em]">
           <span>GEN</span>
           <span className="text-hero-accent">PADEL</span>
           <span className="text-transparent [-webkit-text-stroke:2px_var(--color-text)]">
@@ -91,21 +91,21 @@ export default function Hero() {
           </span>
         </h1>
 
-        <p className="max-w-[46ch] text-[clamp(1.375rem,1.5vw,1.75rem)] font-semibold leading-tight tracking-[-0.01em]">
+        <p className="max-w-[42ch] text-[clamp(1.125rem,1.3vw,1.375rem)] font-semibold leading-snug tracking-[-0.01em]">
           Pick a time, pay online, walk straight on court.
         </p>
-        <p className="mt-3 max-w-[38ch] text-lg leading-relaxed text-text-muted">
+        <p className="mt-2.5 max-w-[36ch] text-base leading-relaxed text-text-muted">
           Your gate code comes by email and the floodlights turn on for your booked time. No
           reception, no phone calls, no waiting.
         </p>
 
-        <div className="mt-9 flex flex-wrap items-center gap-x-8 gap-y-4">
-          <Link to="/booking" className="btn-primary btn-primary-hero gap-3.5 text-lg">
+        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <Link to="/booking" className="btn-primary btn-primary-hero gap-3 text-base">
             Book a court
             <ArrowIcon />
           </Link>
-          <a href="#how-it-works" className="flex items-center gap-2.5 font-semibold">
-            <span className="flex size-10 items-center justify-center rounded-full border border-border">
+          <a href="#how-it-works" className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex size-9 items-center justify-center rounded-full border border-border">
               <PlayIcon />
             </span>
             How it works
@@ -114,14 +114,14 @@ export default function Hero() {
 
         <ol
           id="how-it-works"
-          className="mt-11 flex max-w-[45rem] flex-wrap gap-x-14 gap-y-5 border-t border-border pt-7"
+          className="mt-7 grid max-w-[38rem] grid-cols-1 gap-x-6 gap-y-4 border-t border-border pt-5 md:grid-cols-3"
         >
           {STEPS.map((step) => (
-            <li key={step.n} className="flex items-baseline gap-3.5">
+            <li key={step.n} className="flex items-baseline gap-3">
               <span className="font-heading text-sm text-hero-accent">{step.n}</span>
               <div>
-                <b className="block font-semibold">{step.title}</b>
-                <span className="text-[15px] text-text-muted">{step.detail}</span>
+                <b className="block text-sm font-semibold">{step.title}</b>
+                <span className="text-sm text-text-muted">{step.detail}</span>
               </div>
             </li>
           ))}
@@ -129,7 +129,7 @@ export default function Hero() {
       </div>
 
       <div
-        className="relative hidden aspect-square w-full max-w-[47.5rem] justify-self-center md:block"
+        className="relative hidden aspect-square w-full max-w-[22rem] justify-self-center md:block"
         aria-hidden="true"
       >
         <CourtLines />
@@ -137,20 +137,20 @@ export default function Hero() {
         <NextFreeSlotCard />
         <HeroCard
           icon={
-            <span className="size-2 flex-none animate-pulse rounded-full bg-hero-accent shadow-[0_0_12px_var(--color-hero-accent)]" />
+            <span className="size-1.5 flex-none animate-pulse rounded-full bg-hero-accent shadow-[0_0_8px_var(--color-hero-accent)]" />
           }
           value="Gate code by email"
-          className="right-0 top-[14%]"
+          className="-right-[8%] top-[46%]"
         />
         <HeroCard
           icon={
-            <span className="flex size-11 flex-none items-center justify-center rounded-[14px] bg-hero-accent text-bg">
+            <span className="flex size-8 flex-none items-center justify-center rounded-[10px] bg-hero-accent text-bg">
               <LightsIcon />
             </span>
           }
           label="Floodlights"
           value="On after payment"
-          className="-right-[4%] bottom-[14%]"
+          className="-right-[10%] bottom-[4%]"
         />
       </div>
     </section>

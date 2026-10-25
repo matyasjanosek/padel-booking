@@ -18,8 +18,8 @@ function ClockIcon() {
   return (
     <svg
       aria-hidden="true"
-      width="22"
-      height="22"
+      width="16"
+      height="16"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -80,13 +80,13 @@ export default function NextFreeSlotCard() {
   return (
     <HeroCard
       icon={
-        <span className="flex size-11 flex-none items-center justify-center rounded-[14px] bg-hero-accent text-bg">
+        <span className="flex size-8 flex-none items-center justify-center rounded-[10px] bg-hero-accent text-bg">
           <ClockIcon />
         </span>
       }
       label="Next free slot"
       value={`${day} ${formatTime(slot.startTime)} · ${slot.courtName}`}
-      className="-left-[6%] top-[4%]"
+      className="-left-[10%] top-[2%]"
     />
   );
 }
