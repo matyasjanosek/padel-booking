@@ -126,3 +126,11 @@
     opacity: 1;
   }
 }
+
+/* The ticker's own loop: shifts by exactly one copy of its doubled list,
+   see Ticker.jsx. Already covered by the reduced-motion rule above. */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}

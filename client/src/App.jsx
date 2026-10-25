@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { fetchCourts } from "./api/courts.js";
 import Hero from "./components/Hero.jsx";
+import Ticker from "./components/Ticker.jsx";
 import sunsetPhoto from "./assets/photos/club-at-sunset.jpg";
 
 const SCRIM = {
@@ -22,6 +23,7 @@ export default function App() {
   return (
     <>
       <Hero />
+      <Ticker />
 
       <section className="relative h-72 sm:h-96 md:h-[480px]">
         <img
