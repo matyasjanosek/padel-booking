@@ -112,6 +112,10 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
   .hero-glow {
     opacity: 0;
     animation: floodlight-on 1.2s ease-out 0.1s forwards;

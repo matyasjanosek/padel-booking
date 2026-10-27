@@ -29,4 +29,18 @@ describe("App", () => {
     renderApp();
     expect(screen.getByRole("heading", { level: 1, name: "GEN PADEL ROZNOV" })).toBeInTheDocument();
   });
+
+  it("links the hero's How it works button to the section below", () => {
+    renderApp();
+    const link = screen.getByRole("link", { name: "How it works" });
+    expect(link).toHaveAttribute("href", "#how-it-works");
+  });
+
+  it("renders the how it works section with its three steps", () => {
+    renderApp();
+    expect(screen.getByRole("heading", { level: 2, name: "How it works" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pick a time" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Pay online" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Walk straight on" })).toBeInTheDocument();
+  });
 });
