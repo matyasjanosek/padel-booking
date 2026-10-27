@@ -86,19 +86,22 @@
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
+
+  /* The big outline-stroke display headings (hero, Info). Unbounded's
+     contours self-intersect, so -webkit-text-stroke left stray strokes
+     inside the letters; Archivo's don't. The rest of the site keeps
+     --font-heading. */
+  .display-heading {
+    font-family: "Archivo", sans-serif;
+    font-weight: 800;
+    font-stretch: 125%;
+  }
 }
 
-.club-map .leaflet-tile-pane {
+/* Google's map embed is light by default; this matches the filter the
+   Leaflet tiles used to sit in the dark design. */
+.map-embed {
   filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
-}
-
-.club-map .leaflet-container .leaflet-control-attribution {
-  background: rgb(20 20 20 / 85%);
-  color: var(--color-text-muted);
-}
-
-.club-map .leaflet-control-attribution a {
-  color: var(--color-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -112,6 +115,10 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
   .hero-glow {
     opacity: 0;
     animation: floodlight-on 1.2s ease-out 0.1s forwards;
@@ -124,5 +131,13 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* The ticker's own loop: shifts by exactly one copy of its doubled list,
+   see Ticker.jsx. Already covered by the reduced-motion rule above. */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
   }
 }

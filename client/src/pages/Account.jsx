@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import PageHeading from "../components/PageHeading.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchMyBookings, cancelBooking } from "../api/bookings.js";
 import { fetchCourts } from "../api/courts.js";
@@ -61,117 +62,119 @@ export default function Account() {
   }
 
   return (
-    <section className="px-5 py-12 md:max-w-page md:pl-24 md:pr-10 md:py-16">
-      <h1 className="mb-4 text-4xl tracking-tight md:text-5xl">Account</h1>
-      <p className="max-w-[60ch] text-text-muted">Your account details.</p>
+    <>
+      <PageHeading title="Account" intro="Your account details." />
 
-      <dl className="mt-8 max-w-sm space-y-4">
-        <div>
-          <dt className="text-sm text-text-muted">Name</dt>
-          <dd className="text-text">{user.name}</dd>
-        </div>
-        <div>
-          <dt className="text-sm text-text-muted">Email</dt>
-          <dd className="text-text">{user.email}</dd>
-        </div>
-      </dl>
+      <section className="px-5 pb-12 md:max-w-page md:pb-16 md:pl-24 md:pr-10">
+        <dl className="max-w-sm space-y-4">
+          <div>
+            <dt className="text-sm text-text-muted">Name</dt>
+            <dd className="text-text">{user.name}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-text-muted">Email</dt>
+            <dd className="text-text">{user.email}</dd>
+          </div>
+        </dl>
 
-      <h2 className="mb-3 mt-12 text-2xl">Your bookings</h2>
+        <h2 className="mb-3 mt-12 text-2xl">Your bookings</h2>
 
-      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+        {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
-      {bookings === null ? (
-        <p className="text-text-muted">Loading your bookings...</p>
-      ) : bookings.length === 0 ? (
-        <p className="text-text-muted">You have no bookings yet.</p>
-      ) : (
-        <ul className="flex max-w-xl flex-col gap-3">
-          {bookings.map((booking) => (
-            <li
-              key={booking.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3"
-            >
-              <div>
-                <p className="font-medium text-text">
-                  {courtName(booking.courtId)}, {formatSlot(booking.startTime, booking.endTime)}
-                </p>
-                <p className="text-sm">
-                  <span className={STATUS_CLASSES[booking.status]}>
-                    {STATUS_LABELS[booking.status]}
-                  </span>
-                  <span className="text-text-muted"> · {booking.price} CZK</span>
-                </p>
-                {booking.status === "confirmed" && booking.gateCode && (
-                  <div className="mt-2">
-                    <p
-                      className={`numeral text-2xl ${isGateCodePast(booking) ? "text-text-muted" : "text-accent"}`}
-                    >
-                      {booking.gateCode}
-                    </p>
-                    <p className="text-sm text-text-muted">
-                      Works at the gate from {formatTime(booking.gateCodeValidFrom)} until{" "}
-                      {formatTime(booking.gateCodeValidUntil)}.
-                    </p>
-                    <p className="mt-1 text-sm text-text-muted">
-                      Enter this code on the keypad outside. The gate always opens from the inside.
-                    </p>
-                    <p className="text-sm text-text-muted">
-                      You can also find this code in your confirmation email.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                {booking.status === "pending" && (
-                  <Link
-                    to={`/booking/${booking.id}/checkout`}
-                    className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
-                  >
-                    Pay now
-                  </Link>
-                )}
-                {CANCELLABLE_STATUSES.includes(booking.status) &&
-                  (confirmingId === booking.id ? (
-                    <div className="flex flex-col items-end gap-2">
-                      <span className="text-sm text-text-muted">Cancel this booking?</span>
-                      {booking.status === "confirmed" && (
-                        <span className="text-sm font-medium text-danger">
-                          This booking is paid and will not be refunded.
-                        </span>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCancel(booking.id)}
-                          disabled={cancellingId === booking.id}
-                          className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-danger transition-colors duration-200 hover:border-danger disabled:opacity-50"
-                        >
-                          {cancellingId === booking.id ? "Cancelling..." : "Yes, cancel"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmingId(null)}
-                          className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
-                        >
-                          No
-                        </button>
-                      </div>
+        {bookings === null ? (
+          <p className="text-text-muted">Loading your bookings...</p>
+        ) : bookings.length === 0 ? (
+          <p className="text-text-muted">You have no bookings yet.</p>
+        ) : (
+          <ul className="flex max-w-xl flex-col gap-3">
+            {bookings.map((booking) => (
+              <li
+                key={booking.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border px-4 py-3"
+              >
+                <div>
+                  <p className="font-medium text-text">
+                    {courtName(booking.courtId)}, {formatSlot(booking.startTime, booking.endTime)}
+                  </p>
+                  <p className="text-sm">
+                    <span className={STATUS_CLASSES[booking.status]}>
+                      {STATUS_LABELS[booking.status]}
+                    </span>
+                    <span className="text-text-muted"> · {booking.price} CZK</span>
+                  </p>
+                  {booking.status === "confirmed" && booking.gateCode && (
+                    <div className="mt-2">
+                      <p
+                        className={`numeral text-2xl ${isGateCodePast(booking) ? "text-text-muted" : "text-accent"}`}
+                      >
+                        {booking.gateCode}
+                      </p>
+                      <p className="text-sm text-text-muted">
+                        Works at the gate from {formatTime(booking.gateCodeValidFrom)} until{" "}
+                        {formatTime(booking.gateCodeValidUntil)}.
+                      </p>
+                      <p className="mt-1 text-sm text-text-muted">
+                        Enter this code on the keypad outside. The gate always opens from the
+                        inside.
+                      </p>
+                      <p className="text-sm text-text-muted">
+                        You can also find this code in your confirmation email.
+                      </p>
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingId(booking.id)}
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {booking.status === "pending" && (
+                    <Link
+                      to={`/booking/${booking.id}/checkout`}
                       className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
                     >
-                      Cancel
-                    </button>
-                  ))}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+                      Pay now
+                    </Link>
+                  )}
+                  {CANCELLABLE_STATUSES.includes(booking.status) &&
+                    (confirmingId === booking.id ? (
+                      <div className="flex flex-col items-end gap-2">
+                        <span className="text-sm text-text-muted">Cancel this booking?</span>
+                        {booking.status === "confirmed" && (
+                          <span className="text-sm font-medium text-danger">
+                            This booking is paid and will not be refunded.
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCancel(booking.id)}
+                            disabled={cancellingId === booking.id}
+                            className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-danger transition-colors duration-200 hover:border-danger disabled:opacity-50"
+                          >
+                            {cancellingId === booking.id ? "Cancelling..." : "Yes, cancel"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingId(null)}
+                            className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+                          >
+                            No
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingId(booking.id)}
+                        className="rounded-full border border-border px-4 py-1.5 text-sm font-medium text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+                      >
+                        Cancel
+                      </button>
+                    ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }

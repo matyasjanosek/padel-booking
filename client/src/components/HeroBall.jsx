@@ -18,15 +18,14 @@ function BallPlaceholder() {
   );
 }
 
+// The glow and the ball only. The stage around them (the court lines, the
+// floating info cards) belongs to Hero.jsx, which owns the shared
+// positioning context all of it sits in.
 export default function HeroBall() {
   const show3d = useShouldRender3d();
 
   return (
-    <div className="relative hidden md:block md:h-[520px]" aria-hidden="true">
-      {/* The ball's own floodlight: a pool of light it sits in, not a flat
-          background. The hero's own lime at low opacity, not the site's
-          main accent, the same colour the ball itself is lit with in the
-          scene below. */}
+    <>
       <div
         className="hero-glow pointer-events-none absolute inset-0"
         style={{
@@ -34,7 +33,7 @@ export default function HeroBall() {
             "radial-gradient(circle at 50% 55%, rgba(163,230,53,0.16), rgba(163,230,53,0.04) 38%, transparent 68%)",
         }}
       />
-      <div className="absolute inset-0">
+      <div className="absolute inset-[15%]">
         {show3d ? (
           <Suspense fallback={<BallPlaceholder />}>
             <HeroScene />
@@ -43,6 +42,6 @@ export default function HeroBall() {
           <BallPlaceholder />
         )}
       </div>
-    </div>
+    </>
   );
 }
