@@ -14,11 +14,7 @@ vi.mock("../src/stripeClient.js", () => ({
 }));
 
 import { prisma } from "../src/db/client.js";
-import {
-  getAvailability,
-  slotStartsForDay,
-  closingInstantFor,
-} from "../src/services/availability.js";
+import { getAvailability, slotStartsForDay } from "../src/services/availability.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -31,68 +27,34 @@ beforeEach(() => {
 });
 
 describe("slotStartsForDay", () => {
-  it("returns 30 units on a weekday, 07:00 to 22:00", () => {
-    // 2026-11-02 is a Monday, already in Prague winter time, CET (UTC+1).
+  it("returns 48 units for an ordinary 24 hour day, local midnight to local midnight", () => {
+    // 2026-11-02 is a Monday, Prague winter time, CET (UTC+1), nowhere near
+    // either daylight saving change.
     const starts = slotStartsForDay("2026-11-02");
 
-    expect(starts).toHaveLength(30);
-    expect(new Date(starts[0]).toISOString()).toBe("2026-11-02T06:00:00.000Z");
-    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-11-02T20:30:00.000Z");
+    expect(starts).toHaveLength(48);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-11-01T23:00:00.000Z");
+    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-11-02T22:30:00.000Z");
   });
 
-  it("returns 24 units at the weekend, 08:00 to 20:00, opening later and closing earlier than a weekday", () => {
-    // 2026-09-20 is a Sunday, Prague summer time, CEST (UTC+2).
-    const starts = slotStartsForDay("2026-09-20");
-
-    expect(starts).toHaveLength(24);
-    expect(new Date(starts[0]).toISOString()).toBe("2026-09-20T06:00:00.000Z");
-    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-09-20T17:30:00.000Z");
-  });
-
-  it("still produces 24 weekend units across the day clocks spring forward", () => {
-    // 2026-03-29: clocks jump from 02:00 CET to 03:00 CEST at 01:00 UTC,
-    // well before the 08:00 weekend opening, so the whole day uses CEST
-    // (UTC+2). Also a Sunday, so the weekend hours apply too.
+  it("returns 46 units on the day clocks spring forward, a 23 hour day", () => {
+    // 2026-03-29: Prague clocks jump from 02:00 CET to 03:00 CEST at 01:00
+    // UTC, so local midnight to local midnight is only 23 hours that day.
     const starts = slotStartsForDay("2026-03-29");
 
-    expect(starts).toHaveLength(24);
-    expect(new Date(starts[0]).toISOString()).toBe("2026-03-29T06:00:00.000Z");
-    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-03-29T17:30:00.000Z");
+    expect(starts).toHaveLength(46);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-03-28T23:00:00.000Z");
+    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-03-29T21:30:00.000Z");
   });
 
-  it("still produces 24 weekend units across the day clocks fall back", () => {
-    // 2026-10-25: clocks jump from 03:00 CEST back to 02:00 CET at 01:00
-    // UTC, well before the 08:00 weekend opening, so the whole day uses
-    // CET (UTC+1). Also a Sunday.
+  it("returns 50 units on the day clocks fall back, a 25 hour day", () => {
+    // 2026-10-25: Prague clocks jump from 03:00 CEST back to 02:00 CET at
+    // 01:00 UTC, so local midnight to local midnight is 25 hours that day.
     const starts = slotStartsForDay("2026-10-25");
 
-    expect(starts).toHaveLength(24);
-    expect(new Date(starts[0]).toISOString()).toBe("2026-10-25T07:00:00.000Z");
-    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-10-25T18:30:00.000Z");
-  });
-
-  it("opens at 7:00 Prague time on a weekday", () => {
-    const starts = slotStartsForDay("2026-11-02");
-
-    expect(new Date(starts[0]).toISOString()).toBe("2026-11-02T06:00:00.000Z"); // 07:00 CET
-  });
-
-  it("opens an hour later, at 8:00 Prague time, at the weekend", () => {
-    const starts = slotStartsForDay("2026-09-20");
-
-    expect(new Date(starts[0]).toISOString()).toBe("2026-09-20T06:00:00.000Z"); // 08:00 CEST
-  });
-});
-
-describe("closingInstantFor", () => {
-  it("is 22:00 Prague time on a weekday", () => {
-    const instant = closingInstantFor(new Date("2026-11-02T10:00:00.000Z"));
-    expect(instant.toISOString()).toBe("2026-11-02T21:00:00.000Z");
-  });
-
-  it("is 20:00 Prague time at the weekend", () => {
-    const instant = closingInstantFor(new Date("2026-09-20T10:00:00.000Z"));
-    expect(instant.toISOString()).toBe("2026-09-20T18:00:00.000Z");
+    expect(starts).toHaveLength(50);
+    expect(new Date(starts[0]).toISOString()).toBe("2026-10-24T22:00:00.000Z");
+    expect(new Date(starts.at(-1)).toISOString()).toBe("2026-10-25T22:30:00.000Z");
   });
 });
 
@@ -115,22 +77,28 @@ describe("getAvailability", () => {
     expect(prisma.courtSlot.findMany).not.toHaveBeenCalled();
   });
 
-  it("returns every unit free, with the longest duration that fits each, on a weekday with nothing booked", async () => {
-    // November 2 is a Monday, winter time, CET (UTC+1), closing 22:00.
+  it("returns every unit of the day free, maxUnits capped at MAX_BOOKING_MINUTES even with nothing booked", async () => {
+    // November 2 and 3 are both ordinary 48 unit days with nothing booked,
+    // so every unit's own free run reaches well past MAX_BOOKING_MINUTES
+    // (180 minutes, 6 units); maxUnits is capped there regardless of how
+    // much further the run actually goes.
     const slots = await getAvailability(1, "2026-11-02");
 
-    expect(slots).toHaveLength(30);
+    expect(slots).toHaveLength(48);
     expect(slots[0]).toEqual({
-      startTime: "2026-11-02T07:00:00.000+01:00",
-      endTime: "2026-11-02T07:30:00.000+01:00",
+      startTime: "2026-11-02T00:00:00.000+01:00",
+      endTime: "2026-11-02T00:30:00.000+01:00",
       status: "free",
-      maxUnits: 30,
+      maxUnits: 6,
     });
+    // Today's last unit: only 1 of today's own units left, but free units
+    // immediately follow it at the start of tomorrow, so it is also
+    // capped at 6 rather than reporting just 1.
     expect(slots.at(-1)).toEqual({
-      startTime: "2026-11-02T21:30:00.000+01:00",
-      endTime: "2026-11-02T22:00:00.000+01:00",
+      startTime: "2026-11-02T23:30:00.000+01:00",
+      endTime: "2026-11-03T00:00:00.000+01:00",
       status: "free",
-      maxUnits: 1,
+      maxUnits: 6,
     });
   });
 
@@ -158,22 +126,15 @@ describe("getAvailability", () => {
     expect(unitBefore.maxUnits).toBe(1);
   });
 
-  it("returns 8:00 as the first start at the weekend, an hour later than a weekday", async () => {
-    // 2026-09-20 is a Sunday, Prague summer time, CEST (UTC+2).
-    const slots = await getAvailability(1, "2026-09-20");
-
-    expect(slots[0].startTime).toBe("2026-09-20T08:00:00.000+02:00");
-  });
-
-  it("asks court_slots only for this court within that day's opening hours, as UTC instants", async () => {
+  it("asks court_slots for this court across today and into tomorrow, as UTC instants, so a run can be seen to cross midnight", async () => {
     await getAvailability(1, "2026-09-20");
 
     expect(prisma.courtSlot.findMany).toHaveBeenCalledWith({
       where: {
         courtId: 1,
         slotStart: {
-          gte: new Date("2026-09-20T06:00:00.000Z"),
-          lt: new Date("2026-09-20T18:00:00.000Z"),
+          gte: new Date("2026-09-19T22:00:00.000Z"),
+          lt: new Date("2026-09-21T22:00:00.000Z"),
         },
       },
       select: { slotStart: true },

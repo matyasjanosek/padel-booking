@@ -12,10 +12,9 @@ describe("Info", () => {
     expect(screen.getByRole("heading", { name: "Court rules" })).toBeInTheDocument();
   });
 
-  it("shows both opening hours, weekday and weekend", () => {
+  it("shows the club is open 24/7", () => {
     render(<Info />);
-    expect(screen.getByText("7:00–22:00")).toBeInTheDocument();
-    expect(screen.getByText("8:00–20:00")).toBeInTheDocument();
+    expect(screen.getByText("24/7")).toBeInTheDocument();
   });
 
   it("shows the price as a number", () => {

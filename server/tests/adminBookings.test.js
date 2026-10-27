@@ -82,14 +82,14 @@ describe("listBookingsForAdmin", () => {
     expect(where.courtId).toBe(2);
   });
 
-  it("filters by a day within Prague opening hours", async () => {
+  it("filters by a full Prague calendar day, local midnight to local midnight", async () => {
     prisma.booking.findMany.mockResolvedValue([]);
 
     await listBookingsForAdmin({ date: "2030-06-10" });
 
     const { where } = prisma.booking.findMany.mock.calls[0][0];
-    expect(where.startTime.gte.toISOString()).toBe("2030-06-10T05:00:00.000Z");
-    expect(where.startTime.lt.toISOString()).toBe("2030-06-10T20:00:00.000Z");
+    expect(where.startTime.gte.toISOString()).toBe("2030-06-09T22:00:00.000Z");
+    expect(where.startTime.lt.toISOString()).toBe("2030-06-10T22:00:00.000Z");
   });
 });
 
@@ -137,25 +137,6 @@ describe("rescheduleBooking", () => {
     const result = await rescheduleBooking(1, { courtId: 999, startTime: newStartTime });
 
     expect(result).toEqual({ outcome: "court_not_found" });
-  });
-
-  it("returns would_exceed_closing without touching the booking, same as a new booking's own check", async () => {
-    // 19:30 UTC is 21:30 Prague summer time; this booking's own two hour
-    // duration would run until 23:30, past closing on any day of the week.
-    prisma.booking.findUnique.mockResolvedValue(
-      booking({
-        startTime: new Date("2030-06-10T05:00:00.000Z"),
-        endTime: new Date("2030-06-10T07:00:00.000Z"),
-      }),
-    );
-
-    const result = await rescheduleBooking(1, {
-      courtId: newCourtId,
-      startTime: new Date("2030-06-11T19:30:00.000Z"),
-    });
-
-    expect(result).toEqual({ outcome: "would_exceed_closing" });
-    expect(prisma.booking.update).not.toHaveBeenCalled();
   });
 
   it("keeps the booking's own original duration, not a fixed one hour", async () => {

@@ -1,7 +1,7 @@
 import { prisma } from "../db/client.js";
 import { UNIT_LENGTH_MINUTES } from "../config.js";
 import { formatPragueIso } from "../timezone.js";
-import { slotStartsForDay, closingInstantFor } from "./availability.js";
+import { slotStartsForDay } from "./availability.js";
 import { releasePaymentIfPending } from "./payments.js";
 import { courtSlotRowsFor } from "./courtSlots.js";
 import { scheduleLighting, cancelLighting } from "../hardware/index.js";
@@ -42,9 +42,6 @@ export async function rescheduleBooking(bookingId, { courtId, startTime }) {
 
   const durationMs = booking.endTime.getTime() - booking.startTime.getTime();
   const endTime = new Date(startTime.getTime() + durationMs);
-  if (endTime.getTime() > closingInstantFor(startTime).getTime()) {
-    return { outcome: "would_exceed_closing" };
-  }
 
   let updated;
   try {

@@ -49,9 +49,6 @@ adminBookingsRouter.post(
       if (result.outcome === "not_reschedulable") {
         return res.status(409).json({ error: "This booking cannot be rescheduled" });
       }
-      if (result.outcome === "would_exceed_closing") {
-        return res.status(409).json({ error: "This booking would run past closing time" });
-      }
       if (result.outcome === "slot_taken") {
         return res.status(409).json({ error: "That slot is already taken" });
       }

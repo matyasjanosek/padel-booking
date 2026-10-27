@@ -1,12 +1,7 @@
-// Opening hours
-export const OPENING_HOUR_WEEKDAY = 7;
-export const OPENING_HOUR_WEEKEND = 8;
-export const CLOSING_HOUR_WEEKDAY = 22;
-export const CLOSING_HOUR_WEEKEND = 20;
-
 // Booking length
 export const UNIT_LENGTH_MINUTES = 30;
 export const MIN_BOOKING_MINUTES = 60;
+export const MAX_BOOKING_MINUTES = 180;
 
 // Hold and price
 export const HOLD_MINUTES = 10;

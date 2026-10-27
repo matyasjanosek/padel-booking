@@ -10,7 +10,4 @@ export const MAP_EMBED_URL = `https://www.google.com/maps?q=${CLUB_COORDS.lat},$
 
 export const CONTACT_EMAIL = "info@genpadel.cz";
 
-export const OPENING_HOURS = [
-  { label: "Monday–Friday", hours: "7:00–22:00" },
-  { label: "Saturday–Sunday", hours: "8:00–20:00" },
-];
+export const OPENING_HOURS = [{ label: "Every day", hours: "24/7" }];
