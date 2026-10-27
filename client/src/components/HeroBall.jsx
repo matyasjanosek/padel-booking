@@ -33,7 +33,7 @@ export default function HeroBall() {
             "radial-gradient(circle at 50% 55%, rgba(163,230,53,0.16), rgba(163,230,53,0.04) 38%, transparent 68%)",
         }}
       />
-      <div className="absolute inset-0">
+      <div className="absolute inset-[15%]">
         {show3d ? (
           <Suspense fallback={<BallPlaceholder />}>
             <HeroScene />
