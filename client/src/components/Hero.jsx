@@ -39,8 +39,8 @@ function LightsIcon() {
   return (
     <svg
       aria-hidden="true"
-      width="16"
-      height="16"
+      width="22"
+      height="22"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -58,7 +58,7 @@ function LightsIcon() {
 function CourtLines() {
   return (
     <svg
-      className="absolute -left-[12%] -right-[20%] -top-[6%] -bottom-[6%] h-[112%] w-[132%]"
+      className="absolute -left-[12%] -right-[4%] -top-[14%] -bottom-[14%] h-[128%] w-[116%]"
       viewBox="0 0 1180 860"
       fill="none"
       aria-hidden="true"
@@ -81,12 +81,12 @@ function CourtLines() {
 
 export default function Hero() {
   return (
-    <section className="grid gap-8 px-5 py-10 md:max-w-page md:grid-cols-[1.15fr_1fr] md:items-center md:gap-8 md:py-12 md:pl-24 md:pr-10">
+    <section className="grid gap-8 px-5 py-8 md:max-w-page md:grid-cols-[1.2fr_1fr] md:items-center md:gap-8 md:py-8 md:pl-24 md:pr-10">
       <div>
-        <h1 className="mb-5 flex flex-col text-[clamp(2.75rem,4.6vw,4.75rem)] leading-[1.08] tracking-[-0.02em]">
+        <h1 className="mb-4 flex flex-col text-[clamp(4rem,7.4vw,8.875rem)] leading-[0.92] tracking-[-0.03em]">
           <span>GEN</span>
           <span className="text-hero-accent">PADEL</span>
-          <span className="text-transparent [-webkit-text-stroke:2px_var(--color-text)]">
+          <span className="mt-[0.12em] text-transparent [-webkit-text-stroke:2px_var(--color-text)]">
             ROZNOV
           </span>
         </h1>
@@ -94,12 +94,12 @@ export default function Hero() {
         <p className="max-w-[42ch] text-[clamp(1.125rem,1.3vw,1.375rem)] font-semibold leading-snug tracking-[-0.01em]">
           Pick a time, pay online, walk straight on court.
         </p>
-        <p className="mt-2.5 max-w-[36ch] text-base leading-relaxed text-text-muted">
+        <p className="mt-2 max-w-[36ch] text-base leading-relaxed text-text-muted">
           Your gate code comes by email and the floodlights turn on for your booked time. No
           reception, no phone calls, no waiting.
         </p>
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
           <Link to="/booking" className="btn-primary btn-primary-hero gap-3 text-base">
             Book a court
             <ArrowIcon />
@@ -112,10 +112,7 @@ export default function Hero() {
           </a>
         </div>
 
-        <ol
-          id="how-it-works"
-          className="mt-7 grid max-w-[38rem] grid-cols-1 gap-x-6 gap-y-4 border-t border-border pt-5 md:grid-cols-3"
-        >
+        <ol className="mt-6 grid max-w-[38rem] grid-cols-1 gap-x-6 gap-y-3 border-t border-border pt-4 md:grid-cols-3">
           {STEPS.map((step) => (
             <li key={step.n} className="flex items-baseline gap-3">
               <span className="font-heading text-sm text-hero-accent">{step.n}</span>
@@ -129,7 +126,7 @@ export default function Hero() {
       </div>
 
       <div
-        className="relative hidden aspect-square w-full max-w-[22rem] justify-self-center md:block"
+        className="relative hidden aspect-square w-full max-w-[36rem] justify-self-center md:block"
         aria-hidden="true"
       >
         <CourtLines />
@@ -137,20 +134,20 @@ export default function Hero() {
         <NextFreeSlotCard />
         <HeroCard
           icon={
-            <span className="size-1.5 flex-none animate-pulse rounded-full bg-hero-accent shadow-[0_0_8px_var(--color-hero-accent)]" />
+            <span className="size-2 flex-none animate-pulse rounded-full bg-hero-accent shadow-[0_0_12px_var(--color-hero-accent)]" />
           }
           value="Gate code by email"
-          className="-right-[8%] top-[46%]"
+          className="-right-[2%] top-[4%]"
         />
         <HeroCard
           icon={
-            <span className="flex size-8 flex-none items-center justify-center rounded-[10px] bg-hero-accent text-bg">
+            <span className="flex size-11 flex-none items-center justify-center rounded-[14px] bg-hero-accent text-bg">
               <LightsIcon />
             </span>
           }
           label="Floodlights"
           value="On after payment"
-          className="-right-[10%] bottom-[4%]"
+          className="-right-[3%] bottom-[6%]"
         />
       </div>
     </section>
