@@ -14,7 +14,7 @@ const ITEMS = [
 export default function Ticker() {
   return (
     <div className="overflow-hidden bg-accent py-5 text-bg" aria-hidden="true">
-      <div className="flex w-max animate-[marquee_34s_linear_infinite] items-center gap-10 whitespace-nowrap font-heading text-xl">
+      <div className="flex w-max animate-[marquee_34s_linear_infinite] items-center gap-10 whitespace-nowrap font-heading text-xl will-change-transform">
         {[...ITEMS, ...ITEMS].map((item, index) => (
           <span key={index} className="flex items-center gap-10">
             {item}
