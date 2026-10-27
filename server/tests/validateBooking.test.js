@@ -19,9 +19,8 @@ function fakeResponse() {
   };
 }
 
-// 2030-06-10 is a Monday, 2030-06-15 the Saturday after it. Both are always
-// in the future relative to these tests. 09:00 is a real unit start on
-// either day (opening hour is 07:00, units are 30 minutes).
+// 2030-06-10 is a Monday, always in the future relative to these tests.
+// 09:00 is a real unit start: units are 30 minutes from local midnight.
 const VALID_START = "2030-06-10T09:00:00.000+02:00";
 
 describe("validateCreateBooking", () => {
@@ -76,15 +75,6 @@ describe("validateCreateBooking", () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it("rejects a start time outside the opening hours", () => {
-    const req = {
-      body: { courtId: "1", startTime: "2030-06-10T23:00:00.000+02:00", durationMinutes: 60 },
-    };
-    const res = fakeResponse();
-    validateCreateBooking(req, res, vi.fn());
-    expect(res.statusCode).toBe(400);
-  });
-
   it.each([undefined, 0, 30, 45, -60, "not a number"])(
     "rejects an invalid duration: %p",
     (durationMinutes) => {
@@ -97,49 +87,6 @@ describe("validateCreateBooking", () => {
 
   it.each([60, 90, 120, 150])("accepts every allowed duration: %i minutes", (durationMinutes) => {
     const req = { body: { courtId: "1", startTime: VALID_START, durationMinutes } };
-    const next = vi.fn();
-    validateCreateBooking(req, fakeResponse(), next);
-    expect(next).toHaveBeenCalled();
-  });
-
-  it("rejects a booking that would run past closing time on a weekday", () => {
-    // 21:30 plus 90 minutes ends at 23:00, past the 22:00 weekday close.
-    const req = {
-      body: { courtId: "1", startTime: "2030-06-10T21:30:00.000+02:00", durationMinutes: 90 },
-    };
-    const res = fakeResponse();
-    validateCreateBooking(req, res, vi.fn());
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toMatch(/closing time/i);
-  });
-
-  it("accepts a booking that ends exactly at closing time on a weekday", () => {
-    // 21:00 plus 60 minutes ends exactly at 22:00.
-    const req = {
-      body: { courtId: "1", startTime: "2030-06-10T21:00:00.000+02:00", durationMinutes: 60 },
-    };
-    const next = vi.fn();
-    validateCreateBooking(req, fakeResponse(), next);
-    expect(next).toHaveBeenCalled();
-  });
-
-  it("rejects a booking that would run past closing time at the weekend", () => {
-    // 19:30 plus 60 minutes ends at 20:30, past the 20:00 weekend close,
-    // even though a weekday booking at the same time would be fine.
-    const req = {
-      body: { courtId: "1", startTime: "2030-06-15T19:30:00.000+02:00", durationMinutes: 60 },
-    };
-    const res = fakeResponse();
-    validateCreateBooking(req, res, vi.fn());
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toMatch(/closing time/i);
-  });
-
-  it("accepts a booking that ends exactly at closing time at the weekend", () => {
-    // 19:00 plus 60 minutes ends exactly at 20:00.
-    const req = {
-      body: { courtId: "1", startTime: "2030-06-15T19:00:00.000+02:00", durationMinutes: 60 },
-    };
     const next = vi.fn();
     validateCreateBooking(req, fakeResponse(), next);
     expect(next).toHaveBeenCalled();

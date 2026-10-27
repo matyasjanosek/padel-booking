@@ -1,5 +1,5 @@
 import { UNIT_LENGTH_MINUTES, MIN_BOOKING_MINUTES } from "../config.js";
-import { slotStartsForDay, closingInstantFor } from "../services/availability.js";
+import { slotStartsForDay } from "../services/availability.js";
 import { pragueDateString } from "../timezone.js";
 
 function isValidDuration(minutes) {
@@ -35,11 +35,6 @@ export function validateCreateBooking(req, res, next) {
   const durationNumber = Number(durationMinutes);
   if (!isValidDuration(durationNumber)) {
     return res.status(400).json({ error: "Pick a valid booking length" });
-  }
-
-  const endTime = new Date(startDate.getTime() + durationNumber * 60 * 1000);
-  if (endTime.getTime() > closingInstantFor(startDate).getTime()) {
-    return res.status(400).json({ error: "This booking would run past closing time" });
   }
 
   // Optional, left out entirely when no code was entered.
