@@ -6,8 +6,8 @@ export default function App() {
   return (
     <>
       <Hero />
-      <HowItWorks />
       <Ticker />
+      <HowItWorks />
     </>
   );
 }
