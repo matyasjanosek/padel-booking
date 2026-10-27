@@ -5,7 +5,7 @@ import Info from "./Info.jsx";
 describe("Info", () => {
   it("renders the page heading and the sections", () => {
     render(<Info />);
-    expect(screen.getByRole("heading", { level: 1, name: "INFO GEN PADEL" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "INFO" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Opening hours" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Price" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "How to find us" })).toBeInTheDocument();

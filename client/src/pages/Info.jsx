@@ -1,5 +1,5 @@
 import racketsPhoto from "../assets/photos/rackets-and-balls.jpg";
-import Ticker from "../components/Ticker.jsx";
+import PageHeading from "../components/PageHeading.jsx";
 import { ADDRESS_LINES, MAP_EMBED_URL, OPENING_HOURS } from "../constants/business.js";
 
 const RULES = [
@@ -156,15 +156,7 @@ function RulePanel({ icon: Icon, text, important }) {
 export default function Info() {
   return (
     <>
-      <section className="px-5 py-8 md:max-w-page md:py-8 md:pl-24 md:pr-10">
-        <h1 className="display-heading flex flex-col text-[clamp(2.5rem,7.4vw,8.875rem)] leading-[0.92] tracking-[-0.03em]">
-          <span>INFO</span>
-          <span className="mt-[0.12em] text-transparent [-webkit-text-stroke:2px_var(--color-text)]">
-            GEN PADEL
-          </span>
-        </h1>
-        <p className="mt-6 max-w-[60ch] text-text-muted">Everything you need before you play.</p>
-      </section>
+      <PageHeading title="INFO" intro="Everything you need before you play." />
 
       <section className="px-5 py-16 md:max-w-page md:px-24 md:py-20">
         <div className="grid gap-10 md:grid-cols-2 md:gap-16">
@@ -237,8 +229,6 @@ export default function Info() {
           ))}
         </ul>
       </section>
-
-      <Ticker />
     </>
   );
 }

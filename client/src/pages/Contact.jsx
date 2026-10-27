@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import PageHeading from "../components/PageHeading.jsx";
 import { sendContactMessage } from "../api/contact.js";
 import { ADDRESS_LINES, CONTACT_EMAIL } from "../constants/business.js";
 
@@ -30,12 +31,7 @@ export default function Contact() {
 
   return (
     <>
-      <section className="px-5 pb-8 pt-12 md:max-w-page md:pb-10 md:pl-24 md:pr-10 md:pt-16">
-        <h1 className="mb-4 text-4xl tracking-tight md:text-5xl">Contact</h1>
-        <p className="max-w-[60ch] text-text-muted">
-          Send us a message, or come and see the courts.
-        </p>
-      </section>
+      <PageHeading title="Contact" intro="Send us a message, or come and see the courts." />
 
       <section className="border-t border-border px-5 py-12 md:max-w-page md:py-16 md:pl-24 md:pr-10">
         <div className="grid gap-12 md:grid-cols-2 md:gap-16">
