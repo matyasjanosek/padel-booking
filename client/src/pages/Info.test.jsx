@@ -1,15 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import Info from "./Info.jsx";
-
-vi.mock("../components/ClubMap.jsx", () => ({
-  default: () => <div>the map</div>,
-}));
 
 describe("Info", () => {
   it("renders the page heading and the sections", () => {
     render(<Info />);
-    expect(screen.getByRole("heading", { level: 1, name: "Info" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "INFO GEN PADEL" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Opening hours" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Price" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "How to find us" })).toBeInTheDocument();
@@ -37,9 +33,11 @@ describe("Info", () => {
     expect(photo.alt).not.toMatch(/padel court photo/i);
   });
 
-  it("shows the club map and the real address", async () => {
+  it("shows the map embed and the real address", () => {
     render(<Info />);
-    expect(await screen.findByText("the map")).toBeInTheDocument();
+    const map = screen.getByTitle("Map showing GEN PADEL Rožnov");
+    expect(map.tagName).toBe("IFRAME");
+    expect(map).toHaveAttribute("loading", "lazy");
     expect(screen.getByText(/Pod strání 2268/)).toBeInTheDocument();
   });
 });

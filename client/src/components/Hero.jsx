@@ -83,7 +83,7 @@ export default function Hero() {
   return (
     <section className="grid gap-8 px-5 py-8 md:max-w-page md:grid-cols-[1.2fr_1fr] md:items-center md:gap-8 md:py-8 md:pl-24 md:pr-10">
       <div>
-        <h1 className="hero-heading mb-4 flex flex-col text-[clamp(4rem,7.4vw,8.875rem)] leading-[0.92] tracking-[-0.03em]">
+        <h1 className="display-heading mb-4 flex flex-col text-[clamp(4rem,7.4vw,8.875rem)] leading-[0.92] tracking-[-0.03em]">
           <span>GEN</span>
           <span className="text-hero-accent">PADEL</span>
           <span className="mt-[0.12em] text-transparent [-webkit-text-stroke:2px_var(--color-text)]">
