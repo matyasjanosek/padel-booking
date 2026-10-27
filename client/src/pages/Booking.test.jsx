@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Booking from "./Booking.jsx";
 
@@ -32,6 +32,8 @@ const COURTS = [
   { id: 2, name: "Court 2" },
 ];
 
+// All in the Morning band (06-12), so they show without switching tabs: a
+// fixture date far in the future defaults the page to Morning.
 // maxUnits: 4 means two hours are free after this start, enough for every
 // duration up to 2h.
 const freeSlot = {
@@ -53,18 +55,14 @@ const takenSlot = {
   endTime: "2030-06-10T08:30:00.000+02:00",
   status: "taken",
 };
+// A different hour from the others, in the past, so it never collides with
+// a same-named row from the 2030 fixtures above.
 const pastFreeSlot = {
-  startTime: "2020-01-01T07:00:00.000+01:00",
-  endTime: "2020-01-01T07:30:00.000+01:00",
+  startTime: "2020-01-01T09:00:00.000+01:00",
+  endTime: "2020-01-01T09:30:00.000+01:00",
   status: "free",
   maxUnits: 4,
 };
-
-// The price sits in its own numeral treatment, the CZK unit in a nested
-// span, so it is never one plain text node to match against directly.
-function priceText() {
-  return screen.getByText("CZK").closest("p").textContent;
-}
 
 function renderBooking(initialEntries = ["/booking?date=2030-06-10"]) {
   render(
@@ -84,7 +82,7 @@ beforeEach(() => {
       courtId,
       unitMinutes: 30,
       pricePerHour: 400,
-      slots: courtId === 1 ? [freeSlot, takenSlot, pastFreeSlot] : [freeSlot],
+      slots: courtId === 1 ? [freeSlot, takenSlot, pastFreeSlot] : [freeSlot, takenSlot],
     }),
   );
 });
@@ -97,30 +95,30 @@ describe("Booking", () => {
     expect(await screen.findByText(/loading availability/i)).toBeInTheDocument();
   });
 
-  it("shows both courts with free and taken slots clearly separated", async () => {
+  it("shows both courts as grid columns, with free and taken slots", async () => {
     renderBooking();
 
-    expect(await screen.findByRole("heading", { name: "Court 1", level: 3 })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Court 2", level: 3 })).toBeInTheDocument();
+    expect(await screen.findByRole("columnheader", { name: "Court 1" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Court 2" })).toBeInTheDocument();
     expect(screen.getAllByText("Free").length).toBeGreaterThan(0);
-    expect(screen.getByText("Booked")).toBeInTheDocument();
+    expect(screen.getAllByText("Booked").length).toBeGreaterThan(0);
   });
 
   it("disables a past slot separately from a taken one", async () => {
     renderBooking();
-    await screen.findByRole("heading", { name: "Court 1", level: 3 });
+    await screen.findByRole("columnheader", { name: "Court 1" });
 
     expect(screen.getByText("Past").closest("button")).toBeDisabled();
-    expect(screen.getByText("Booked").closest("button")).toBeDisabled();
+    expect(screen.getAllByText("Booked")[0].closest("button")).toBeDisabled();
   });
 
-  it("shows a clear empty state when a court has no free slots left", async () => {
+  it("shows a clear empty state when the band has no free slots", async () => {
     fetchAvailability.mockImplementation(({ courtId, date }) =>
       Promise.resolve({ date, courtId, unitMinutes: 30, pricePerHour: 400, slots: [takenSlot] }),
     );
     renderBooking();
 
-    expect(await screen.findAllByText("No free slots left on this day.")).toHaveLength(2);
+    expect(await screen.findByText("No free slots left in this band.")).toBeInTheDocument();
   });
 
   it("sends a logged out visitor to log in first, remembering where they were", async () => {
@@ -136,31 +134,28 @@ describe("Booking", () => {
     expect(createBooking).not.toHaveBeenCalled();
   });
 
-  it("shows the court, time and price for the default, shortest duration", async () => {
+  it("shows the court, time range and price for the default, shortest duration", async () => {
     renderBooking();
 
     const freeButton = (await screen.findAllByText("Free"))[0].closest("button");
     fireEvent.click(freeButton);
 
-    expect(await screen.findByText(/Court 1,/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Duration")).toHaveValue("60");
-    expect(priceText()).toBe("400 CZK");
+    expect(await screen.findByText(/Court 1 ·/)).toBeInTheDocument();
+    expect(screen.getByText("07:00–08:00")).toBeInTheDocument();
+    expect(screen.getByText("400 CZK")).toBeInTheDocument();
   });
 
-  it("offers every duration up to the longest that fits, and prices each one", async () => {
+  it("offers every length up to the longest that fits, and prices each one", async () => {
     renderBooking();
 
     fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
-    const durationSelect = screen.getByLabelText("Duration");
-    expect(Array.from(durationSelect.options).map((option) => option.textContent)).toEqual([
-      "1h",
-      "1h30",
-      "2h",
-    ]);
+    const lengthGroup = screen.getByRole("group", { name: "Booking length" });
+    const chips = within(lengthGroup).getAllByRole("button");
+    expect(chips.map((chip) => chip.textContent)).toEqual(["1h", "1h 30", "2h"]);
 
-    fireEvent.change(durationSelect, { target: { value: "120" } });
+    fireEvent.click(within(lengthGroup).getByRole("button", { name: "2h" }));
 
-    expect(priceText()).toBe("800 CZK");
+    expect(screen.getByText("800 CZK")).toBeInTheDocument();
   });
 
   it("marks a unit too short for any booking as Under 1h, focusable but not selectable", async () => {
@@ -183,7 +178,9 @@ describe("Booking", () => {
 
     fireEvent.click(tooShortButton);
 
-    expect(screen.queryByLabelText("Duration")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Pick a free slot on the grid to start your booking."),
+    ).toBeInTheDocument();
   });
 
   it("books the slot on confirm and goes to checkout", async () => {
@@ -191,7 +188,7 @@ describe("Booking", () => {
     renderBooking();
 
     fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
 
     await waitFor(() =>
       expect(createBooking).toHaveBeenCalledWith({
@@ -204,16 +201,17 @@ describe("Booking", () => {
     expect(navigate).toHaveBeenCalledWith("/booking/42/checkout");
   });
 
-  it("sends the chosen duration and a trimmed coupon code along with the booking", async () => {
+  it("sends the chosen length and a trimmed coupon code along with the booking", async () => {
     createBooking.mockResolvedValue({ id: 42 });
     renderBooking();
 
     fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
-    fireEvent.change(screen.getByLabelText("Duration"), { target: { value: "90" } });
+    const lengthGroup = screen.getByRole("group", { name: "Booking length" });
+    fireEvent.click(within(lengthGroup).getByRole("button", { name: "1h 30" }));
     fireEvent.change(await screen.findByLabelText(/coupon code/i), {
       target: { value: "  summer10  " },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
 
     await waitFor(() =>
       expect(createBooking).toHaveBeenCalledWith({
@@ -230,41 +228,42 @@ describe("Booking", () => {
     renderBooking();
 
     fireEvent.click((await screen.findAllByText("Free"))[0].closest("button"));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm booking" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
 
     expect(
       await screen.findByText("That slot was just taken. Pick another one."),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Confirm booking" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Continue to payment" })).not.toBeInTheDocument();
     // once per court on mount, then again per court after the failed attempt
     await waitFor(() => expect(fetchAvailability).toHaveBeenCalledTimes(4));
   });
 
-  it("moves to the next day and fetches that day's availability", async () => {
+  it("changes date and fetches availability for the newly chosen date", async () => {
     renderBooking();
-    await screen.findByRole("heading", { name: "Court 1", level: 3 });
+    await screen.findByRole("columnheader", { name: "Court 1" });
 
-    fireEvent.click(screen.getByRole("button", { name: /next day/i }));
+    const dateInput = document.querySelector('input[type="date"]');
+    fireEvent.change(dateInput, { target: { value: "2030-06-11" } });
 
     await waitFor(() =>
       expect(fetchAvailability).toHaveBeenCalledWith({ courtId: 1, date: "2030-06-11" }),
     );
   });
 
-  it("disables moving to a day before today", async () => {
+  it("disables moving to days before today", async () => {
     renderBooking(["/booking"]);
-    await screen.findByRole("heading", { name: "Court 1", level: 3 });
+    await screen.findByRole("columnheader", { name: "Court 1" });
 
-    expect(screen.getByRole("button", { name: /previous day/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Earlier days" })).toBeDisabled();
   });
 
   it("highlights the court named in the court query param", async () => {
     renderBooking(["/booking?date=2030-06-10&court=2"]);
 
-    const court1Heading = await screen.findByRole("heading", { name: "Court 1", level: 3 });
-    const court2Heading = screen.getByRole("heading", { name: "Court 2", level: 3 });
+    const court1Header = await screen.findByRole("columnheader", { name: "Court 1" });
+    const court2Header = screen.getByRole("columnheader", { name: "Court 2" });
 
-    expect(court1Heading.closest("div").parentElement.className).toContain("border-transparent");
-    expect(court2Heading.closest("div").parentElement.className).toContain("border-accent");
+    expect(court1Header.className).not.toContain("text-accent");
+    expect(court2Header.className).toContain("text-accent");
   });
 });

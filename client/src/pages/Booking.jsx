@@ -1,34 +1,45 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { fetchCourts } from "../api/courts.js";
 import { fetchAvailability } from "../api/availability.js";
 import { createBooking } from "../api/bookings.js";
-import { formatSlot, formatTime, formatDuration } from "../utils/formatSlot.js";
-import { todayInPrague, addDays, formatDateHeading } from "../utils/date.js";
-import SlotGrid from "../components/SlotGrid.jsx";
+import { pragueHour } from "../utils/formatSlot.js";
+import { todayInPrague } from "../utils/date.js";
+import { MIN_BOOKING_MINUTES, MAX_BOOKING_MINUTES, TIME_BANDS } from "../constants/booking.js";
 import PageHeading from "../components/PageHeading.jsx";
+import DayPicker from "../components/DayPicker.jsx";
+import BandTabs from "../components/BandTabs.jsx";
+import BookingGrid from "../components/BookingGrid.jsx";
+import BookingSummary from "../components/BookingSummary.jsx";
 
 const today = todayInPrague();
 
-// The shortest a booking can be. Mirrors the server's own MIN_BOOKING_MINUTES
-// in config.js: the server is what actually enforces this, this is only
-// for building the list of durations to offer.
-const MIN_BOOKING_MINUTES = 60;
-
-// Every duration from the minimum up to as many units as the slot has free
-// after it, in steps of one unit. Empty when even the minimum does not fit,
-// for example the last unit or two of the day.
+// Every duration from the minimum up to the longest that both fits the
+// slot's own free run and stays under MAX_BOOKING_MINUTES.
 function durationOptions(maxUnits, unitMinutes) {
   const options = [];
   for (
     let minutes = MIN_BOOKING_MINUTES;
-    minutes <= maxUnits * unitMinutes;
+    minutes <= maxUnits * unitMinutes && minutes <= MAX_BOOKING_MINUTES;
     minutes += unitMinutes
   ) {
     options.push(minutes);
   }
   return options;
+}
+
+// The band containing the current time, only when looking at today; any
+// other day opens on Morning.
+function defaultBandKey(date) {
+  if (date !== today) {
+    return "morning";
+  }
+  const hour = pragueHour(new Date());
+  const band = TIME_BANDS.find(
+    (candidate) => hour >= candidate.startHour && hour < candidate.endHour,
+  );
+  return band?.key ?? "morning";
 }
 
 export default function Booking() {
@@ -38,7 +49,7 @@ export default function Booking() {
   const [searchParams, setSearchParams] = useSearchParams();
   const date = searchParams.get("date") || today;
   // Set when arriving from a court's own link on the home page, so that
-  // court's grid is highlighted rather than the two courts looking identical.
+  // court's column is highlighted rather than the courts looking identical.
   const preselectedCourtId = Number(searchParams.get("court")) || null;
 
   const [courts, setCourts] = useState([]);
@@ -47,6 +58,7 @@ export default function Booking() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
+  const [bandKey, setBandKey] = useState(() => defaultBandKey(date));
   const [selectedSlot, setSelectedSlot] = useState(null); // { courtId, startTime, maxUnits }
   const [durationMinutes, setDurationMinutes] = useState(null);
   const [couponCode, setCouponCode] = useState("");
@@ -89,6 +101,7 @@ export default function Booking() {
     setDurationMinutes(null);
     setCouponCode("");
     setBookingError("");
+    setBandKey(defaultBandKey(newDate));
     setSearchParams({ date: newDate });
   }
 
@@ -106,8 +119,15 @@ export default function Booking() {
     }
     setBookingError("");
     setSelectedSlot({ courtId, startTime, maxUnits });
-    const options = durationOptions(maxUnits, unitMinutes);
-    setDurationMinutes(options[0] ?? null);
+    const opts = durationOptions(maxUnits, unitMinutes);
+    setDurationMinutes(opts[0] ?? null);
+  }
+
+  function handleDeselectSlot() {
+    setSelectedSlot(null);
+    setDurationMinutes(null);
+    setCouponCode("");
+    setBookingError("");
   }
 
   async function handleConfirmBooking() {
@@ -140,156 +160,85 @@ export default function Booking() {
       : null;
   const selectedPrice = durationMinutes ? (durationMinutes / 60) * pricePerHour : null;
 
+  const band = TIME_BANDS.find((candidate) => candidate.key === bandKey) ?? TIME_BANDS[1];
+
+  // Counted from the same availability already loaded for the grid, not a
+  // second request: how many free, not-yet-past units fall in each band,
+  // across every court.
+  const freeCounts = useMemo(() => {
+    const counts = Object.fromEntries(TIME_BANDS.map((candidate) => [candidate.key, 0]));
+    courts.forEach((court) => {
+      (availability[court.id]?.slots ?? []).forEach((slot) => {
+        if (slot.status !== "free" || new Date(slot.startTime).getTime() <= Date.now()) {
+          return;
+        }
+        const hour = pragueHour(slot.startTime);
+        const candidate = TIME_BANDS.find((item) => hour >= item.startHour && hour < item.endHour);
+        if (candidate) {
+          counts[candidate.key] += 1;
+        }
+      });
+    });
+    return counts;
+  }, [courts, availability]);
+
   return (
     <>
       <PageHeading
         title="Booking"
         intro={
           <>
-            Pick a day and a free slot on either court.
+            Pick a day, a court and a start time.
             {pricePerHour != null && ` ${pricePerHour} CZK per hour.`}
           </>
         }
       />
 
-      <section
-        className={`px-5 pb-12 md:max-w-page md:pb-16 md:pl-24 md:pr-10 ${selectedSlot ? "pb-64 md:pb-16" : ""}`}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => changeDate(addDays(date, -1))}
-            disabled={date === today}
-            className="btn-secondary btn-sm"
-          >
-            ‹ Previous day
-          </button>
-          <input
-            type="date"
-            value={date}
-            min={today}
-            onChange={(event) => changeDate(event.target.value)}
-            className="rounded-lg border border-border bg-surface px-3 py-2 text-text focus:border-accent focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => changeDate(addDays(date, 1))}
-            className="btn-secondary btn-sm"
-          >
-            Next day ›
-          </button>
-        </div>
-        <p className="mt-2 text-sm text-text-muted">{formatDateHeading(date)}</p>
+      <section className="px-5 pb-12 md:max-w-page md:pb-16 md:pl-24 md:pr-10">
+        <DayPicker date={date} onChangeDate={changeDate} />
 
-        {bookingError && <p className="mt-4 text-sm text-danger">{bookingError}</p>}
+        <div className="mt-6">
+          <BandTabs
+            bands={TIME_BANDS}
+            selectedKey={bandKey}
+            onSelect={setBandKey}
+            freeCounts={freeCounts}
+          />
+        </div>
+
+        {bookingError && <p className="mt-6 text-sm text-danger">{bookingError}</p>}
 
         {loadError && <p className="mt-6 text-danger">{loadError}</p>}
         {!loadError && loading && <p className="mt-6 text-text-muted">Loading availability...</p>}
 
         {!loading && !loadError && (
-          <div className="mt-8 grid gap-10 md:grid-cols-2">
-            {courts.map((court) => (
-              <div
-                key={court.id}
-                className={`rounded-lg border p-4 ${
-                  court.id === preselectedCourtId ? "border-accent/60" : "border-transparent"
-                }`}
-              >
-                <SlotGrid
-                  courtId={court.id}
-                  courtName={court.name}
-                  slots={availability[court.id]?.slots ?? []}
-                  unitMinutes={unitMinutes}
-                  selectedStartTime={
-                    selectedSlot?.courtId === court.id ? selectedSlot.startTime : null
-                  }
-                  onSelectSlot={handleSelectSlot}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Pinned once a slot is chosen, so the slot and the price stay
-          visible */}
-        {selectedSlot && (
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-accent/60 bg-surface p-4 shadow-[0_-4px_16px_rgba(0,0,0,0.4)] sm:px-8 md:inset-x-auto md:bottom-8 md:right-10 md:w-80 md:rounded-lg md:border md:p-5 md:shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
-            <p className="font-medium text-text">
-              {courtName(selectedSlot.courtId)}, {formatTime(selectedSlot.startTime)}
-            </p>
-
-            {options.length === 0 ? (
-              <p className="mt-2 text-sm text-danger">
-                No booking length fits from this start, pick an earlier one.
-              </p>
-            ) : (
-              <>
-                <div className="mt-3 flex flex-wrap items-end gap-3 md:flex-col md:items-stretch md:gap-1.5">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-medium" htmlFor="duration">
-                      Duration
-                    </label>
-                    <select
-                      id="duration"
-                      value={durationMinutes ?? ""}
-                      onChange={(event) => setDurationMinutes(Number(event.target.value))}
-                      disabled={booking}
-                      className="rounded-lg border border-border bg-bg px-3 py-2 text-text disabled:opacity-50"
-                    >
-                      {options.map((minutes) => (
-                        <option key={minutes} value={minutes}>
-                          {formatDuration(minutes)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="numeral text-2xl text-accent md:mt-1">
-                    {selectedPrice} <span className="text-sm text-text-muted">CZK</span>
-                  </p>
-                </div>
-                {selectedEndTime && (
-                  <p className="mt-2 text-sm text-text-muted">
-                    {formatSlot(selectedSlot.startTime, selectedEndTime)}
-                  </p>
-                )}
-                <div className="mt-3 flex flex-col gap-1.5">
-                  <label className="text-sm font-medium" htmlFor="coupon-code">
-                    Coupon code (optional)
-                  </label>
-                  <input
-                    id="coupon-code"
-                    type="text"
-                    value={couponCode}
-                    onChange={(event) => setCouponCode(event.target.value)}
-                    disabled={booking}
-                    className="rounded-lg border border-border bg-bg px-3 py-2 text-text disabled:opacity-50"
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="mt-4 flex gap-3">
-              <button
-                type="button"
-                onClick={handleConfirmBooking}
-                disabled={booking || !durationMinutes}
-                className="btn-primary"
-              >
-                {booking ? "Booking..." : "Confirm booking"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedSlot(null);
-                  setDurationMinutes(null);
-                  setCouponCode("");
-                }}
-                disabled={booking}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-            </div>
+          <div className="mt-6 grid gap-6 md:grid-cols-[1fr_22rem] md:items-start md:gap-8">
+            <BookingGrid
+              courts={courts}
+              slotsByCourtId={availability}
+              unitMinutes={unitMinutes}
+              band={band}
+              preselectedCourtId={preselectedCourtId}
+              selectedSlot={selectedSlot}
+              durationMinutes={durationMinutes}
+              onSelectSlot={handleSelectSlot}
+              onDeselectSlot={handleDeselectSlot}
+            />
+            <BookingSummary
+              selectedSlot={selectedSlot}
+              selectedEndTime={selectedEndTime}
+              durationMinutes={durationMinutes}
+              onChangeDuration={setDurationMinutes}
+              options={options}
+              courtName={selectedSlot ? courtName(selectedSlot.courtId) : ""}
+              date={date}
+              pricePerHour={pricePerHour}
+              price={selectedPrice}
+              couponCode={couponCode}
+              onChangeCoupon={setCouponCode}
+              booking={booking}
+              onConfirm={handleConfirmBooking}
+            />
           </div>
         )}
       </section>
