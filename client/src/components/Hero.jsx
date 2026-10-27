@@ -53,29 +53,6 @@ function LightsIcon() {
   );
 }
 
-// The outline "ROZNOV". Unbounded's own glyph contours for R, Z and N
-// self-intersect, so both -webkit-text-stroke and an SVG <text> stroke show
-// stray strokes inside the letterforms (confirmed by trying the SVG stroke
-// first, zoomed in). Fill has no such problem, so this fakes an outline by
-// stacking two filled copies: a full-size one in the text colour, and a
-// copy in the background colour scaled down slightly from the same centre,
-// leaving a thin ring of the first copy showing at the edges.
-function RoznovOutline() {
-  return (
-    <span className="relative inline-block">
-      <span aria-hidden="true" className="inline-flex">
-        {Array.from("ROZNOV").map((letter, index) => (
-          <span key={index} className="relative inline-block">
-            <span className="text-text">{letter}</span>
-            <span className="absolute inset-0 scale-[0.9] text-bg">{letter}</span>
-          </span>
-        ))}
-      </span>
-      <span className="sr-only">ROZNOV</span>
-    </span>
-  );
-}
-
 // The court's own outline behind the ball, decorative. Real proportions,
 // not a literal survey.
 function CourtLines() {
@@ -106,11 +83,11 @@ export default function Hero() {
   return (
     <section className="grid gap-8 px-5 py-8 md:max-w-page md:grid-cols-[1.2fr_1fr] md:items-center md:gap-8 md:py-8 md:pl-24 md:pr-10">
       <div>
-        <h1 className="mb-4 flex flex-col text-[clamp(4rem,7.4vw,8.875rem)] leading-[0.92] tracking-[-0.03em]">
+        <h1 className="hero-heading mb-4 flex flex-col text-[clamp(4rem,7.4vw,8.875rem)] leading-[0.92] tracking-[-0.03em]">
           <span>GEN</span>
           <span className="text-hero-accent">PADEL</span>
-          <span className="mt-[0.12em] text-text">
-            <RoznovOutline />
+          <span className="mt-[0.12em] text-transparent [-webkit-text-stroke:2px_var(--color-text)]">
+            ROZNOV
           </span>
         </h1>
 
