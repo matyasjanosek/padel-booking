@@ -1,4 +1,4 @@
-import { UNIT_LENGTH_MINUTES, MIN_BOOKING_MINUTES } from "../config.js";
+import { UNIT_LENGTH_MINUTES, MIN_BOOKING_MINUTES, MAX_BOOKING_MINUTES } from "../config.js";
 import { slotStartsForDay } from "../services/availability.js";
 import { pragueDateString } from "../timezone.js";
 
@@ -6,6 +6,7 @@ function isValidDuration(minutes) {
   return (
     Number.isInteger(minutes) &&
     minutes >= MIN_BOOKING_MINUTES &&
+    minutes <= MAX_BOOKING_MINUTES &&
     minutes % UNIT_LENGTH_MINUTES === 0
   );
 }

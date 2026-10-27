@@ -1,9 +1,10 @@
 import { prisma } from "../db/client.js";
-import { UNIT_LENGTH_MINUTES } from "../config.js";
+import { UNIT_LENGTH_MINUTES, MAX_BOOKING_MINUTES } from "../config.js";
 import { pragueTimeToUtc, pragueDateString, formatPragueIso } from "../timezone.js";
 import { expireStaleHolds } from "./holdExpiry.js";
 
 const UNIT_LENGTH_MS = UNIT_LENGTH_MINUTES * 60 * 1000;
+const MAX_UNITS = MAX_BOOKING_MINUTES / UNIT_LENGTH_MINUTES;
 
 // The club is open all day, every day, so a day's units run from its local
 // start to the local start of the next day. Stepping between two real
@@ -65,7 +66,7 @@ export async function getAvailability(courtId, date) {
       startTime: formatPragueIso(new Date(start)),
       endTime: formatPragueIso(new Date(start + UNIT_LENGTH_MS)),
       status: taken ? "taken" : "free",
-      ...(taken ? {} : { maxUnits: maxUnitsFrom[i] }),
+      ...(taken ? {} : { maxUnits: Math.min(maxUnitsFrom[i], MAX_UNITS) }),
     };
   });
 }

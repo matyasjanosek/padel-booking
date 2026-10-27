@@ -77,11 +77,11 @@ describe("getAvailability", () => {
     expect(prisma.courtSlot.findMany).not.toHaveBeenCalled();
   });
 
-  it("returns every unit of the day free, with nothing booked today or tomorrow to stop a run", async () => {
+  it("returns every unit of the day free, maxUnits capped at MAX_BOOKING_MINUTES even with nothing booked", async () => {
     // November 2 and 3 are both ordinary 48 unit days with nothing booked,
-    // and there is no closing time to cap a run any more, so the free run
-    // from today's first unit carries on into the whole of tomorrow too:
-    // 48 of today's units plus 48 of tomorrow's.
+    // so every unit's own free run reaches well past MAX_BOOKING_MINUTES
+    // (180 minutes, 6 units); maxUnits is capped there regardless of how
+    // much further the run actually goes.
     const slots = await getAvailability(1, "2026-11-02");
 
     expect(slots).toHaveLength(48);
@@ -89,15 +89,16 @@ describe("getAvailability", () => {
       startTime: "2026-11-02T00:00:00.000+01:00",
       endTime: "2026-11-02T00:30:00.000+01:00",
       status: "free",
-      maxUnits: 96,
+      maxUnits: 6,
     });
-    // Today's last unit: only 1 of today's own units left, but 48 more
-    // free ones immediately follow it at the start of tomorrow.
+    // Today's last unit: only 1 of today's own units left, but free units
+    // immediately follow it at the start of tomorrow, so it is also
+    // capped at 6 rather than reporting just 1.
     expect(slots.at(-1)).toEqual({
       startTime: "2026-11-02T23:30:00.000+01:00",
       endTime: "2026-11-03T00:00:00.000+01:00",
       status: "free",
-      maxUnits: 49,
+      maxUnits: 6,
     });
   });
 
